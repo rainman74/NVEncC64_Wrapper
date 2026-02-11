@@ -8,7 +8,7 @@ if '%1'=='-h' goto USAGE
 if '%1'=='' goto USAGE
 
 set "EDIT_TAGS=1"
-set "DEBUG_AUTOCROP=1"
+set "DEBUG_AUTOCROP=0"
 if "%DEBUG_AUTOCROP%"=="1" (
 	set "DBG=call :DEBUG"
 ) else (
@@ -769,3 +769,4 @@ foreach($t in $j.tracks){
 }
 "SET EDIT_ACTIONS=$($actions -join ' ')" | Out-File -Encoding ASCII -FilePath $SetFile
 #PS_EDIT_TAGS_END#
+
