@@ -8,7 +8,7 @@ if '%1'=='-h' goto USAGE
 if '%1'=='' goto USAGE
 
 set "EDIT_TAGS=1"
-set "DEBUG_AUTOCROP=0"
+set "DEBUG_AUTOCROP=1"
 if "%DEBUG_AUTOCROP%"=="1" (
 	set "DBG=call :DEBUG"
 ) else (
@@ -518,15 +518,15 @@ endlocal & exit /b
 :USAGE
 setlocal EnableDelayedExpansion
 cls
-echo Usage: nvencc64_wrapper ^<encoder^> [audio=ac3] [quality=28] [crop=copy] [filter=copy] [mode=copy] [decoder=avhw]
+echo Usage: %~n0 ^<encoder^> [audio=ac3] [quality=28] [crop=none] [filter=none] [mode=none] [decoder=avhw]
 echo.
 call :PRINT_TOK "encoder" "(required)"  TOK_ENCODER
 call :PRINT_TOK "audio"   "(def=ac3)"   TOK_AUDIO
-call :PRINT_TOK "quality" "(def=def)"   TOK_QUALITY
+call :PRINT_TOK "quality" "(def=28)"    TOK_QUALITY
 call :PRINT_TOK "crop"    "(def=none)"  TOK_CROP
 call :PRINT_TOK "filter"  "(def=none)"  TOK_FILTER
 call :PRINT_TOK "mode"    "(def=none)"  TOK_MODE
-call :PRINT_TOK "decoder" "(def=avhw)"  TOK_DECODER
+call :PRINT_TOK "decoder" "(def=hw)"    TOK_DECODER
 echo.
 echo Example: %~n0 ^| %UL%encoder%NO% ^| %UL%audio%NO%   ^| %UL%quality%NO% ^| %UL%crop%NO%    ^| %UL%filter%NO%  ^| %UL%mode%NO%    ^| %UL%decoder%NO% ^|
 echo Example: %~n0 ^| hevc    ^| ac3     ^|         ^|         ^|         ^|         ^|         ^|
