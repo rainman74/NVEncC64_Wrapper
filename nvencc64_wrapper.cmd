@@ -184,11 +184,11 @@ if "!REQ_Q!"=="auto" (
 set "PRESET=--preset p7"
 set "TUNING=--tune hq"
 set "B_REF=--bframes 3 --ref 4"
-if "!ACTUAL_Q!"=="uhq" 		(set "QUALITY=24" & set "TUNING=--tune uhq" & set "B_REF=--bframes 4 --ref 4")
-if "!ACTUAL_Q!"=="hq"  		(set "QUALITY=26")
-if "!ACTUAL_Q!"=="def" 		(set "QUALITY=28")
-if "!ACTUAL_Q!"=="lq"  		(set "QUALITY=30")
-if "!ACTUAL_Q!"=="ulq" 		(set "QUALITY=32" & set "TUNING=--tune undef" & set "PRESET=--preset p1")
+if "!ACTUAL_Q!"=="uhq"		(set "QUALITY=24" & set "TUNING=--tune uhq" & set "B_REF=--bframes 4 --ref 4")
+if "!ACTUAL_Q!"=="hq"		(set "QUALITY=26")
+if "!ACTUAL_Q!"=="def"		(set "QUALITY=28")
+if "!ACTUAL_Q!"=="lq"		(set "QUALITY=30")
+if "!ACTUAL_Q!"=="ulq"		(set "QUALITY=32" & set "TUNING=--tune undef" & set "PRESET=--preset p1")
 exit /b
 
 :SETQUALITY-H264
@@ -202,32 +202,32 @@ if "!REQ_Q!"=="auto" (
 set "PRESET=--preset p7"
 set "TUNING=--tune hq"
 set "B_REF=--bframes 3 --ref 4"
-if "!ACTUAL_Q!"=="uhq" 		(set "QUALITY=20")
-if "!ACTUAL_Q!"=="hq"  		(set "QUALITY=22")
-if "!ACTUAL_Q!"=="def" 		(set "QUALITY=24")
-if "!ACTUAL_Q!"=="lq"  		(set "QUALITY=26")
-if "!ACTUAL_Q!"=="ulq" 		(set "QUALITY=28" & set "TUNING=--tune undef" & set "PRESET=--preset p1")
+if "!ACTUAL_Q!"=="uhq"		(set "QUALITY=20")
+if "!ACTUAL_Q!"=="hq"		(set "QUALITY=22")
+if "!ACTUAL_Q!"=="def"		(set "QUALITY=24")
+if "!ACTUAL_Q!"=="lq"		(set "QUALITY=26")
+if "!ACTUAL_Q!"=="ulq"		(set "QUALITY=28" & set "TUNING=--tune undef" & set "PRESET=--preset p1")
 exit /b
 
 :SETENCODER
 set "ENCODER=hevc" & set "PROFILE=main"
 if "%1"=="def"				(set "ENCODER=hevc" & set "PROFILE=main")
-if "%1"=="hevc" 			(set "ENCODER=hevc" & set "PROFILE=main")
-if "%1"=="he10" 			(set "ENCODER=hevc" & set "PROFILE=main10 --output-depth 10")
-if "%1"=="h264" 			(set "ENCODER=h264" & set "PROFILE=high")
-if "%1"=="av1"				(set "ENCODER=av1"  & set "PROFILE=high")
+if "%1"=="hevc"				(set "ENCODER=hevc" & set "PROFILE=main")
+if "%1"=="he10"				(set "ENCODER=hevc" & set "PROFILE=main10 --output-depth 10")
+if "%1"=="h264"				(set "ENCODER=h264" & set "PROFILE=high")
+if "%1"=="av1"				(set "ENCODER=av1"	& set "PROFILE=high")
 exit /b
 
 :SETAUDIO
 set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only"
-if "%2"=="copy"	  			(set "AUDIO=--audio-copy")
-if "%2"=="copy1"  			(set "AUDIO=--audio-copy 1")
-if "%2"=="copy2"  			(set "AUDIO=--audio-copy 2")
-if "%2"=="copy12" 			(set "AUDIO=--audio-copy 1,2")
-if "%2"=="copy23" 			(set "AUDIO=--audio-copy 2,3")
-if "%2"=="ac3"	  			(set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only")
-if "%2"=="aac"	  			(set "AUDIO=--audio-codec aac --audio-bitrate stereo:128,5.1:256 --audio-encode-other-codec-only")
-if "%2"=="eac3"	  			(set "AUDIO=--audio-codec eac3 --audio-bitrate stereo:320,5.1:640 --audio-encode-other-codec-only")
+if "%2"=="copy"				(set "AUDIO=--audio-copy")
+if "%2"=="copy1"			(set "AUDIO=--audio-copy 1")
+if "%2"=="copy2"			(set "AUDIO=--audio-copy 2")
+if "%2"=="copy12"			(set "AUDIO=--audio-copy 1,2")
+if "%2"=="copy23"			(set "AUDIO=--audio-copy 2,3")
+if "%2"=="ac3"				(set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only")
+if "%2"=="aac"				(set "AUDIO=--audio-codec aac --audio-bitrate stereo:128,5.1:256 --audio-encode-other-codec-only")
+if "%2"=="eac3"				(set "AUDIO=--audio-codec eac3 --audio-bitrate stereo:320,5.1:640 --audio-encode-other-codec-only")
 exit /b
 
 :SETCROP
@@ -280,34 +280,34 @@ exit /b
 
 :SETFILTER
 set "FILTER="
-if "%5"=="none"			 	(set "FILTER=")
-if "%5"=="edgelevel"	 	(set "FILTER=--vpp-edgelevel")
-if "%5"=="smooth"		 	(set "FILTER=--vpp-smooth")
-if "%5"=="smooth31"		 	(set "FILTER=--vpp-smooth quality=6,qp=31,prec=fp32")
-if "%5"=="smooth63"		 	(set "FILTER=--vpp-smooth quality=6,qp=63,prec=fp32")
-if "%5"=="nlmeans"		 	(set "FILTER=--vpp-nlmeans")
-if "%5"=="gauss"		 	(set "FILTER=--vpp-gauss 3")
-if "%5"=="gauss5"		 	(set "FILTER=--vpp-gauss 5")
-if "%5"=="sharp"		 	(set "FILTER=--vpp-unsharp")
-if "%5"=="ss"			 	(set "FILTER=--vpp-smooth --vpp-unsharp")
-if "%5"=="denoise"		 	(set "FILTER=--vpp-nvvfx-denoise strength=0")
-if "%5"=="denoisehq"	 	(set "FILTER=--vpp-nvvfx-denoise strength=1")
-if "%5"=="artifact"		 	(set "FILTER=--vpp-nvvfx-artifact-reduction mode=0")
-if "%5"=="artifacthq"	 	(set "FILTER=--vpp-nvvfx-artifact-reduction mode=1")
-if "%5"=="superres"		 	(set "FILTER=--vpp-resize algo=nvvfx-superres,superres-mode=0,superres-strength=0.4")
-if "%5"=="superreshq"	 	(set "FILTER=--vpp-resize algo=nvvfx-superres,superres-mode=1,superres-strength=0.4")
-if "%5"=="vsr"			 	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp")
-if "%5"=="vsrdenoise"	 	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-denoise strength=0")
-if "%5"=="vsrdenoisehq"	 	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-denoise strength=1")
-if "%5"=="vsrartifact"	 	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=0")
-if "%5"=="vsrartifacthq" 	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=1")
-if "%5"=="log"			 	(set "FILTER=--log-packets input_packets.log")
-if "%5"=="f1"			 	(set "FILTER=")
-if "%5"=="f2"			 	(set "FILTER=")
-if "%5"=="f3"			 	(set "FILTER=")
-if "%5"=="f4"			 	(set "FILTER=")
-if "%5"=="f5"			 	(set "FILTER=")
-if "%5"=="f6"			 	(set "FILTER=")
+if "%5"=="none"				(set "FILTER=")
+if "%5"=="edgelevel"		(set "FILTER=--vpp-edgelevel")
+if "%5"=="smooth"			(set "FILTER=--vpp-smooth")
+if "%5"=="smooth31"			(set "FILTER=--vpp-smooth quality=6,qp=31,prec=fp32")
+if "%5"=="smooth63"			(set "FILTER=--vpp-smooth quality=6,qp=63,prec=fp32")
+if "%5"=="nlmeans"			(set "FILTER=--vpp-nlmeans")
+if "%5"=="gauss"			(set "FILTER=--vpp-gauss 3")
+if "%5"=="gauss5"			(set "FILTER=--vpp-gauss 5")
+if "%5"=="sharp"			(set "FILTER=--vpp-unsharp")
+if "%5"=="ss"				(set "FILTER=--vpp-smooth --vpp-unsharp")
+if "%5"=="denoise"			(set "FILTER=--vpp-nvvfx-denoise strength=0")
+if "%5"=="denoisehq"		(set "FILTER=--vpp-nvvfx-denoise strength=1")
+if "%5"=="artifact"			(set "FILTER=--vpp-nvvfx-artifact-reduction mode=0")
+if "%5"=="artifacthq"		(set "FILTER=--vpp-nvvfx-artifact-reduction mode=1")
+if "%5"=="superres"			(set "FILTER=--vpp-resize algo=nvvfx-superres,superres-mode=0,superres-strength=0.4")
+if "%5"=="superreshq"		(set "FILTER=--vpp-resize algo=nvvfx-superres,superres-mode=1,superres-strength=0.4")
+if "%5"=="vsr"				(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp")
+if "%5"=="vsrdenoise"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-denoise strength=0")
+if "%5"=="vsrdenoisehq"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-denoise strength=1")
+if "%5"=="vsrartifact"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=0")
+if "%5"=="vsrartifacthq"	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=1")
+if "%5"=="log"				(set "FILTER=--log-packets input_packets.log")
+if "%5"=="f1"				(set "FILTER=")
+if "%5"=="f2"				(set "FILTER=")
+if "%5"=="f3"				(set "FILTER=")
+if "%5"=="f4"				(set "FILTER=")
+if "%5"=="f5"				(set "FILTER=")
+if "%5"=="f6"				(set "FILTER=")
 exit /b
 
 :SETMODE
@@ -341,7 +341,7 @@ set "DECODER=avhw"
 if "%7"=="def"				(set "DECODER=avhw")
 if "%7"=="hw"				(set "DECODER=avhw")
 if "%7"=="sw"				(set "DECODER=avsw")
-if "%7"=="auto" 			(set "DECODER=")
+if "%7"=="auto"				(set "DECODER=")
 exit /b
 
 :VALIDATE_ONE
