@@ -135,7 +135,6 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 		)
 
 		setlocal DisableDelayedExpansion
-		echo "file:\\\%%~dI%%~pI"| sed -r "s/[\"]/\a/g; s/[\\]/\//g; s/[ ]/\%%20/g; s/[#]/\%%23/g; s/[']/\%%27/g; s/!/%%21/g"
 		powershell -command "write-output ('file:///' + (get-item '%%~dpI').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace '!', '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
 		endlocal
 
@@ -157,7 +156,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			%DBG% FILTER_HAS_RESIZE = "!FILTER_HAS_RESIZE!"
 			%DBG% RESIZE_PARAM      = "!RESIZE_PARAM!"
 
-			nvencc64.exe --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "%%I" -c %ENCODER% --profile %PROFILE% --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\%%~nI.mkv"
+			nvencc64.exe --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "%%I" -c %ENCODER% --profile %PROFILE% --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\%%~nI.mkv"
 
 			if exist "_Converted\%%~nI.mkv" (
 				if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "_Converted\%%~nI.mkv"
@@ -548,7 +547,7 @@ endlocal
 goto :END
 
 :SETESC
-for /f "delims=" %%A in ('echo prompt $E^| cmd') do set "ESC=%%A"
+for /f "usebackq delims=" %%A in ('echo prompt $E^| cmd') do set "ESC=%%A"
 set "UL=%ESC%[4m"
 set "NO=%ESC%[24m"
 exit /b
