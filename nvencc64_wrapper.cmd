@@ -66,8 +66,8 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 		set "SKIP_FILE=1"
 	) else (
 		if /i "!SRC_CODEC!"=="HEVC" if /i "%ENCODER%"=="hevc" set "TARGET_DIR=_Converted"
-		if /i "!SRC_CODEC!"=="AVC" if /i "%ENCODER%"=="h264" set "TARGET_DIR=_Converted"
-		if /i "!SRC_CODEC!"=="AV1" if /i "%ENCODER%"=="av1"  set "TARGET_DIR=_Converted"
+		if /i "!SRC_CODEC!"=="AVC"  if /i "%ENCODER%"=="h264" set "TARGET_DIR=_Converted"
+		if /i "!SRC_CODEC!"=="AV1"  if /i "%ENCODER%"=="av1"  set "TARGET_DIR=_Converted"
 	)
 
 	if defined TARGET_DIR (
@@ -156,7 +156,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			%DBG% FILTER_HAS_RESIZE = "!FILTER_HAS_RESIZE!"
 			%DBG% RESIZE_PARAM      = "!RESIZE_PARAM!"
 
-			nvencc64.exe --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "%%I" -c %ENCODER% --profile %PROFILE% --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\%%~nI.mkv"
+			nvencc64.exe --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "%%I" -c %ENCODER% --profile %PROFILE% --tier high --level auto --qvbr !QUALITY! !PRESET! --multipass 2pass-quarter --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\%%~nI.mkv"
 
 			if exist "_Converted\%%~nI.mkv" (
 				if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "_Converted\%%~nI.mkv"
@@ -170,7 +170,11 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 		)
 	)
 )
-if "%FOUND%"=="0" echo No files found.
+if "%FOUND%"=="0" (
+    echo No files found.
+) else (
+    powershell -command "$o=ls . -inc *.mkv,*.mp4,*.avi,*.webm; $s=0; $d=0; foreach($f in $o){$c='_Converted\'+$f.Name; if(test-path $c){$s+=$f.Length; $d+=(ls $c).Length}}; if($s -gt 0){write-host ('[INFO] Savings: {0:N2} GB ({1:P1})' -f (($s-$d)/1GB), (($s-$d)/$s)) -fg Green}"
+)
 exit /b
 
 :SETQUALITY-HEVC
@@ -302,7 +306,7 @@ if "%5"=="vsrdenoisehq"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --
 if "%5"=="vsrartifact"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=0")
 if "%5"=="vsrartifacthq"	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=1")
 if "%5"=="log"				(set "FILTER=--log-packets input_packets.log")
-if "%5"=="f1"				(set "FILTER=")
+if "%5"=="f1"				(set "FILTER=--vpp-colorspace lut3d=regrade.cube,lut3d_interp=tetrahedral")
 if "%5"=="f2"				(set "FILTER=")
 if "%5"=="f3"				(set "FILTER=")
 if "%5"=="f4"				(set "FILTER=")
@@ -547,7 +551,7 @@ endlocal
 goto :END
 
 :SETESC
-for /f "usebackq delims=" %%A in ('echo prompt $E^| cmd') do set "ESC=%%A"
+for /f "usebackq delims=" %%A in (`echo prompt $E^| cmd`) do set "ESC=%%A"
 set "UL=%ESC%[4m"
 set "NO=%ESC%[24m"
 exit /b
