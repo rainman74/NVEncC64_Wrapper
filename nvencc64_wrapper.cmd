@@ -769,7 +769,7 @@ foreach($t in $j.tracks){
 			}
 		} else {
 			$actions+="--edit track:$num --set flag-default=0 --set flag-forced=0"
-		}        
+		}
 		if(-not [string]::IsNullOrWhiteSpace($name)){
 			$normalizedName = NormalizeName $name
 			if($null -ne $normalizedName){
