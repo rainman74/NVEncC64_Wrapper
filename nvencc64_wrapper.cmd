@@ -622,8 +622,8 @@ $StandardResolutions = @{
 	  0 = @{ Crop="0:0:0:0";	 Res="1920x1080" }
 }
 $StandardWidths = @(1800,1792,1788,1780,1764,1500,1480,1440,1420,1348)
-$ffmpegCmd = "D:\Apps\Commands\bin\ffmpeg.exe"
-$ffprobeCmd = "D:\Apps\Commands\bin\ffprobe.exe"
+$ffmpegCmd = (get-command ffmpeg.exe).source
+$ffprobeCmd = (get-command ffprobe.exe).source
 $ProbeTimes = @("00:02:00","00:10:00","00:20:00")
 $CropResults = @()
 if (-not (Test-Path $VideoFile)) { $ExitCode = 1 }
