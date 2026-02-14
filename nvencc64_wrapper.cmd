@@ -418,7 +418,7 @@ if not exist "%PS_SET_FILE%" (
 call "%PS_SET_FILE%"
 
 if defined EDIT_ACTIONS (
-  mkvpropedit "%FILE%" --edit info --delete title %EDIT_ACTIONS% >nul
+  mkvpropedit "%FILE%" --edit info --delete title !EDIT_ACTIONS! >nul
 ) else (
   mkvpropedit "%FILE%" --edit info --delete title >nul
 )
@@ -732,6 +732,7 @@ $defaultAudioNum=$null
 if($audioGer.Count -gt 0){
 	$defaultAudioNum=$audioGer[0].properties.number
 }
+$forcedDone = $false
 foreach($t in $j.tracks){
 	$num=$t.properties.number
 	$type=$t.type
@@ -761,8 +762,15 @@ foreach($t in $j.tracks){
 	}
 	if($type -eq 'subtitles'){
 		if($t.properties.forced_track -eq $true){
-			$actions+="--edit track:$num --set flag-default=1"
-		}
+			if(-not $forcedDone){
+				$actions+="--edit track:$num --set flag-default=1 --set flag-forced=1"
+				$forcedDone = $true
+			} else {
+				$actions+="--edit track:$num --set flag-default=0 --set flag-forced=1"
+			}
+		} else {
+			$actions+="--edit track:$num --set flag-default=0 --set flag-forced=0"
+		}        
 		if(-not [string]::IsNullOrWhiteSpace($name)){
 			$normalizedName = NormalizeName $name
 			if($null -ne $normalizedName){
