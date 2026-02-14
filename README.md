@@ -62,9 +62,6 @@ By using these commands as your default workflow, any new files added to the dir
 
 ## Manual:
 For further questions, please consult the [manual](https://github.com/rainman74/NVEncC64_Wrapper/wiki).
-
-## Version
-Current stable version: **v3.0**
 ---
 
 ## License
