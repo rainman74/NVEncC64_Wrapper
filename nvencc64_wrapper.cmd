@@ -136,6 +136,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 
 		setlocal DisableDelayedExpansion
 		echo "file:\\\%%~dI%%~pI"| sed -r "s/[\"]/\a/g; s/[\\]/\//g; s/[ ]/\%%20/g; s/[#]/\%%23/g; s/[']/\%%27/g; s/!/%%21/g"
+		powershell -command "write-output ('file:///' + (get-item '%%~dpI').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace '!', '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
 		endlocal
 
 		mediainfo --Inform="General;%%Duration/String2%% - %%FileSize/String4%%" "%%I"
@@ -271,7 +272,7 @@ if "%4"=="1780"				(set "CROP=--output-res 1780x1080 --crop 70,0,70,0")
 if "%4"=="1788"				(set "CROP=--output-res 1788x1080 --crop 66,0,66,0")
 if "%4"=="1800"				(set "CROP=--output-res 1800x1080 --crop 60,0,60,0")
 if "%4"=="c1"				(set "CROP=--crop 246,6,246,6 --output-res 1440x1080")
-if "%4"=="c2"				(set "CROP=")
+if "%4"=="c2"				(set "CROP=--crop 266,8,266,8 --output-res 1400x1080")
 if "%4"=="c3"				(set "CROP=")
 if "%4"=="c4"				(set "CROP=")
 if "%4"=="c5"				(set "CROP=")
@@ -391,7 +392,11 @@ if not defined S endlocal & exit /b 9
 set /a E=E
 if %E% LEQ 0 endlocal & exit /b 9
 
-more +%S% "%~f0" | head -n %E% > "%PS_SCRIPT%"
+powershell -NoProfile -Command ^
+  "$lines = Get-Content -Path '%~f0' -Encoding UTF8;" ^
+  "$start = %S%;" ^
+  "$end = $start + %E% - 1;" ^
+  "$lines[$start..$end] | Out-File -FilePath '%PS_SCRIPT%' -Encoding utf8 -Force"
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass ^
   -File "%PS_SCRIPT%" "%FILE%" "%PS_SET_FILE%"
@@ -447,7 +452,11 @@ if not defined S endlocal & exit /b 9
 set /a E=E
 if %E% LEQ 0 endlocal & exit /b 9
 
-more +%S% "%~f0" | head -n %E% > "%PS_SCRIPT%"
+powershell -NoProfile -Command ^
+  "$lines = Get-Content -Path '%~f0' -Encoding UTF8;" ^
+  "$start = %S%;" ^
+  "$end = $start + %E% - 1;" ^
+  "$lines[$start..$end] | Out-File -FilePath '%PS_SCRIPT%' -Encoding utf8 -Force"
 
 powershell.exe -executionpolicy bypass -file "%PS_SCRIPT%" "%~1" -SetFile "%PS_SET_FILE%" -StatusFile "%PS_STATUS_FILE%"
 
