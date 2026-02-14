@@ -28,14 +28,11 @@ Example: nvencc64_wrapper   hevc      copy    def       copy   copy     copy   s
 ## Preparations:
 
 ### FFmpeg and FFprobe
-The _absolute paths_ need to be adjusted beforehand for the both ffmpeg applications:<br>
+Both ffmpeg applications must be present in the path:<br>
 ```
-$ffmpegCmd = "D:\Apps\ffmpeg.exe"
-$ffprobeCmd = "D:\Apps\ffprobe.exe"
+ffmpeg.exe
+ffprobe.exe
 ```
-
-### GNU sed & head
-Install GNU utils (head and sed version 4.0.7 or higher) in your path.
 
 ## Enable automatic cropping:
 You can activate auto-cropping for all files in the current path:<br><br>
