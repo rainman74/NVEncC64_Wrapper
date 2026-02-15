@@ -8,6 +8,7 @@ if '%1'=='-h' goto USAGE
 if '%1'=='' goto USAGE
 
 set "EDIT_TAGS=1"
+set "CHECK_ENCODED=1"
 set "DEBUG_AUTOCROP=0"
 if "%DEBUG_AUTOCROP%"=="1" (
 	set "DBG=call :DEBUG"
@@ -65,9 +66,11 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 		move "%%I" "_Check\" >nul
 		set "SKIP_FILE=1"
 	) else (
-		if /i "!SRC_CODEC!"=="HEVC" if /i "%ENCODER%"=="hevc" set "TARGET_DIR=_Converted"
-		if /i "!SRC_CODEC!"=="AVC"  if /i "%ENCODER%"=="h264" set "TARGET_DIR=_Converted"
-		if /i "!SRC_CODEC!"=="AV1"  if /i "%ENCODER%"=="av1"  set "TARGET_DIR=_Converted"
+		if "%CHECK_ENCODED%"=="1" (
+			if /i "!SRC_CODEC!"=="HEVC" if /i "%ENCODER%"=="hevc" set "TARGET_DIR=_Converted"
+			if /i "!SRC_CODEC!"=="AVC"  if /i "%ENCODER%"=="h264" set "TARGET_DIR=_Converted"
+			if /i "!SRC_CODEC!"=="AV1"  if /i "%ENCODER%"=="av1"  set "TARGET_DIR=_Converted"
+		)
 	)
 
 	if defined TARGET_DIR (
@@ -156,7 +159,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			%DBG% FILTER_HAS_RESIZE = "!FILTER_HAS_RESIZE!"
 			%DBG% RESIZE_PARAM      = "!RESIZE_PARAM!"
 
-			nvencc64.exe --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "%%I" -c %ENCODER% --profile %PROFILE% --tier high --level auto --qvbr !QUALITY! !PRESET! --multipass 2pass-quarter --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\%%~nI.mkv"
+			nvencc64.exe --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "%%I" -c %ENCODER% --profile %PROFILE% --tier high --level auto --qvbr !QUALITY! !PRESET! --multipass 2pass-full --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\%%~nI.mkv"
 
 			if exist "_Converted\%%~nI.mkv" (
 				if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "_Converted\%%~nI.mkv"
@@ -293,7 +296,7 @@ if "%5"=="nlmeans"			(set "FILTER=--vpp-nlmeans")
 if "%5"=="gauss"			(set "FILTER=--vpp-gauss 3")
 if "%5"=="gauss5"			(set "FILTER=--vpp-gauss 5")
 if "%5"=="sharp"			(set "FILTER=--vpp-unsharp")
-if "%5"=="ss"				(set "FILTER=--vpp-smooth --vpp-unsharp")
+if "%5"=="ss"				(set "FILTER=--vpp-unsharp radius=3,threshold=4.0,weight=0.5 --vpp-knn radius=3,strength=0.08")
 if "%5"=="denoise"			(set "FILTER=--vpp-nvvfx-denoise strength=0")
 if "%5"=="denoisehq"		(set "FILTER=--vpp-nvvfx-denoise strength=1")
 if "%5"=="artifact"			(set "FILTER=--vpp-nvvfx-artifact-reduction mode=0")
@@ -306,7 +309,7 @@ if "%5"=="vsrdenoisehq"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --
 if "%5"=="vsrartifact"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=0")
 if "%5"=="vsrartifacthq"	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=1")
 if "%5"=="log"				(set "FILTER=--log-packets input_packets.log")
-if "%5"=="f1"				(set "FILTER=--vpp-colorspace lut3d=regrade.cube,lut3d_interp=tetrahedral")
+if "%5"=="f1"				(set "FILTER=--vpp-colorspace lut3d=regrade.cube,lut3d_interp=tetrahedral --vpp-unsharp radius=1,threshold=0.0,weight=1.2 --vpp-tweak brightness=-0.02,contrast=1.03,gamma=0.98 --vpp-knn radius=3,strength=0.08 --output-res 1280x720")
 if "%5"=="f2"				(set "FILTER=")
 if "%5"=="f3"				(set "FILTER=")
 if "%5"=="f4"				(set "FILTER=")
@@ -388,8 +391,8 @@ set "PS_SET_FILE=%TEMP%\edit_tags_set_%RANDOM%.cmd"
 if exist "%PS_SCRIPT%" del "%PS_SCRIPT%"
 if exist "%PS_SET_FILE%" del "%PS_SET_FILE%"
 
-for /f "tokens=1 delims=:" %%A in ('findstr /n "^#PS_EDIT_TAGS_BEGIN#" "%~f0"') do set /a S=%%A
-for /f "tokens=1 delims=:" %%A in ('findstr /n "^#PS_EDIT_TAGS_END#"   "%~f0"') do set /a E=%%A-S
+for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_EDIT_TAGS_BEGIN#" "%~f0"`) do set /a S=%%A
+for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_EDIT_TAGS_END#"   "%~f0"`) do set /a E=%%A-S
 
 if not defined S endlocal & exit /b 9
 set /a E=E
@@ -448,8 +451,8 @@ set "PS_SET_FILE=%TEMP%\probe_set_vars_%RANDOM%.cmd"
 set "PS_STATUS_FILE=%TEMP%\probe_status_output_%RANDOM%.tmp"
 if exist "%PS_SET_FILE%" del "%PS_SET_FILE%"
 if exist "%PS_STATUS_FILE%" del "%PS_STATUS_FILE%"
-for /f "tokens=1 delims=:" %%A in ('findstr /n "^#PS_RUN_PROBE_BEGIN#" "%~f0"') do set /a S=%%A
-for /f "tokens=1 delims=:" %%A in ('findstr /n "^#PS_RUN_PROBE_END#"   "%~f0"') do set /a E=%%A-S
+for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_RUN_PROBE_BEGIN#" "%~f0"`) do set /a S=%%A
+for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_RUN_PROBE_END#"   "%~f0"`) do set /a E=%%A-S
 
 if not defined S endlocal & exit /b 9
 set /a E=E
@@ -787,5 +790,5 @@ foreach($t in $j.tracks){
 		continue
 	}
 }
-"SET EDIT_ACTIONS=$($actions -join ' ')" | Out-File -Encoding ASCII -FilePath $SetFile
+"SET EDIT_ACTIONS=$($actions -join ' ')" | Out-File -Encoding Default -FilePath $SetFile
 #PS_EDIT_TAGS_END#
