@@ -63,7 +63,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 	if not defined SRC_CODEC (
 		echo ERROR: Could not detect codec. Moving file to _Check.
 		call :ENSURE_DIR "_Check"
-		move "%%I" "_Check\" >nul
+		move /Y "%%I" "_Check\" >nul
 		set "SKIP_FILE=1"
 	) else (
 		if "%CHECK_ENCODED%"=="1" (
@@ -109,7 +109,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			if "!PROBE_OK!"=="0" (
 				%DBG% RUN_PROBE failed, moving file to _Check
 				call :ENSURE_DIR "_Check"
-				move "%%I" "_Check\" >nul
+				move /Y "%%I" "_Check\" >nul
 				set "SKIP_FILE=1"
 			) else (
 				if "!AUTO_CROP!"=="0:0:0:0" (
