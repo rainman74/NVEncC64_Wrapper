@@ -114,8 +114,8 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			) else (
 				if "!AUTO_CROP!"=="0:0:0:0" (
 					%DBG% AUTO-CROP: no crop detected, passthrough
+					set "CROP=--crop 0,0,0,0"
 					set "RESIZE_REQUIRED=0"
-					set "CROP="
 					set "RESIZE_PARAM="
 				) else (
 					set "AUTO_CROP_FIX=!AUTO_CROP::=,!"
@@ -256,7 +256,6 @@ if "%4"=="960"				(set "CROP=--crop 0,60,0,60")
 if "%4"=="1012"				(set "CROP=--crop 0,34,0,34")
 if "%4"=="1024"				(set "CROP=--crop 0,28,0,28")
 if "%4"=="1036"				(set "CROP=--crop 0,22,0,22")
-if "%4"=="1036p"			(set "CROP=--output-res 1920x1036 --crop 0,0,0,0")
 if "%4"=="1040"				(set "CROP=--crop 0,20,0,20")
 if "%4"=="720"				(set "CROP=--output-res 1280x-2 --crop 0,0,0,0")
 if "%4"=="720p"				(set "CROP=--output-res -2x720 --crop 0,0,0,0")
@@ -272,10 +271,10 @@ if "%4"=="1348"				(set "CROP=--output-res 1348x1080 --crop 286,0,286,0")
 if "%4"=="1420"				(set "CROP=--output-res 1420x1080 --crop 250,0,250,0")
 if "%4"=="1480"				(set "CROP=--output-res 1480x1080 --crop 220,0,220,0")
 if "%4"=="1500"				(set "CROP=--output-res 1500x1080 --crop 210,0,210,0")
-if "%4"=="1792"				(set "CROP=--output-res 1792x1080 --crop 64,0,64,0")
 if "%4"=="1764"				(set "CROP=--output-res 1764x1080 --crop 78,0,78,0")
 if "%4"=="1780"				(set "CROP=--output-res 1780x1080 --crop 70,0,70,0")
 if "%4"=="1788"				(set "CROP=--output-res 1788x1080 --crop 66,0,66,0")
+if "%4"=="1792"				(set "CROP=--output-res 1792x1080 --crop 64,0,64,0")
 if "%4"=="1800"				(set "CROP=--output-res 1800x1080 --crop 60,0,60,0")
 if "%4"=="c1"				(set "CROP=--crop 246,6,246,6 --output-res 1440x1080")
 if "%4"=="c2"				(set "CROP=--crop 266,8,266,8 --output-res 1400x1080")
@@ -296,7 +295,6 @@ if "%5"=="nlmeans"			(set "FILTER=--vpp-nlmeans")
 if "%5"=="gauss"			(set "FILTER=--vpp-gauss 3")
 if "%5"=="gauss5"			(set "FILTER=--vpp-gauss 5")
 if "%5"=="sharp"			(set "FILTER=--vpp-unsharp")
-if "%5"=="ss"				(set "FILTER=--vpp-unsharp radius=3,threshold=4.0,weight=0.5 --vpp-knn radius=3,strength=0.08")
 if "%5"=="denoise"			(set "FILTER=--vpp-nvvfx-denoise strength=0")
 if "%5"=="denoisehq"		(set "FILTER=--vpp-nvvfx-denoise strength=1")
 if "%5"=="artifact"			(set "FILTER=--vpp-nvvfx-artifact-reduction mode=0")
@@ -310,7 +308,7 @@ if "%5"=="vsrartifact"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --v
 if "%5"=="vsrartifacthq"	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=1")
 if "%5"=="log"				(set "FILTER=--log-packets input_packets.log")
 if "%5"=="f1"				(set "FILTER=--vpp-colorspace lut3d=regrade.cube,lut3d_interp=tetrahedral --vpp-unsharp radius=1,threshold=0.0,weight=1.2 --vpp-tweak brightness=-0.02,contrast=1.03,gamma=0.98 --vpp-knn radius=3,strength=0.08 --output-res 1280x720")
-if "%5"=="f2"				(set "FILTER=")
+if "%5"=="f2"				(set "FILTER=--vpp-unsharp radius=3,threshold=4.0,weight=0.5 --vpp-knn radius=3,strength=0.08")
 if "%5"=="f3"				(set "FILTER=")
 if "%5"=="f4"				(set "FILTER=")
 if "%5"=="f5"				(set "FILTER=")
@@ -484,7 +482,13 @@ if "%RC%"=="8" if defined NVEnc_Crop goto :PROBE_OK
 endlocal & exit /b 1
 
 :PROBE_OK
-endlocal & set "AUTO_CROP=%NVEnc_Crop%" & set "AUTO_RES=%NVEnc_Res%" & set "PROBE_OK=1"
+set "TEMP_CROP=%NVEnc_Crop%"
+set "TEMP_RES=%NVEnc_Res%"
+endlocal & (
+	set "AUTO_CROP=%TEMP_CROP%"
+	set "AUTO_RES=%TEMP_RES%"
+	set "PROBE_OK=1"
+)
 exit /b 0
 
 :PRINT_TOK
@@ -563,8 +567,8 @@ exit /b
 set "TOK_ENCODER=def hevc he10 h264 av1"
 set "TOK_AUDIO=copy copy1 copy2 copy12 copy23 ac3 aac eac3"
 set "TOK_QUALITY=def auto hq uhq lq ulq"
-set "TOK_CROP=none auto c1 c2 c3 c4 c5 c6 696 768 800 804 808 812 816 872 960 1012 1024 1036 1036p 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1348 1420 1480 1500 1792 1764 1780 1788 1800"
-set "TOK_FILTER=none f1 f2 f3 f4 f5 f6 edgelevel smooth smooth31 smooth63 nlmeans gauss gauss5 sharp ss denoise denoisehq artifact artifacthq superres superreshq vsr vsrdenoise vsrdenoisehq vsrartifact vsrartifacthq log"
+set "TOK_CROP=none auto 696 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1348 1420 1480 1500 1764 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
+set "TOK_FILTER=none edgelevel smooth smooth31 smooth63 nlmeans gauss gauss5 sharp denoise denoisehq artifact artifacthq superres superreshq vsr vsrdenoise vsrdenoisehq vsrartifact vsrartifacthq log f1 f2 f3 f4 f5 f6"
 set "TOK_MODE=none deint yadif yadifbob double 23fps 25fps 30fps 60fps 29fps 59fps brighter darker vintage linear tweak HDRtoSDR HDRtoSDRR HDRtoSDRM HDRtoSDRH dv dolby-vision"
 set "TOK_DECODER=def hw sw auto"
 exit /b
@@ -681,7 +685,7 @@ if ($ExitCode -eq 0) {
 		"SET NVEnc_Res=${BestW}x${OrigHeight}" | Out-File -Encoding ASCII $SetFile -Append
 		exit 0
 	}
-	if ([math]::Abs($CropT - $CropB) -gt 4) {
+	if ([math]::Abs($CropT - $CropB) -gt 10) {
 		$RejectReason = "vertical asymmetry (T=$CropT B=$CropB)"
 	}
 	elseif ( ($CropT -eq 0 -and $CropB -gt 0) -or ($CropB -eq 0 -and $CropT -gt 0) ) {
