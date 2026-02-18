@@ -77,7 +77,13 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 		call :ENSURE_DIR "!TARGET_DIR!"
 		set "MOVED_FILE=!TARGET_DIR!\%%~nxI"
 		echo %ESC%[91mWARNING: Source already encoded as !SRC_CODEC!. Moving file to !TARGET_DIR!.%ESC%[0m
-			move /Y "%%I" "!MOVED_FILE!" >nul
+		echo.
+		move /Y "%%I" "!MOVED_FILE!" >nul
+		
+		setlocal DisableDelayedExpansion
+		powershell -command "write-output ('file:///' + (get-item '%%~dpI').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace '!', '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
+		endlocal
+		
 		set "SKIP_FILE=1"
 		if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "!MOVED_FILE!"
 	)
@@ -108,6 +114,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			call :RUN_PROBE "%%I"
 			if "!PROBE_OK!"=="0" (
 				%DBG% RUN_PROBE failed, moving file to _Check
+				echo %ESC%[91mWARNING: Probe failed or source too small. Moving file to _Check.%ESC%[0m
 				call :ENSURE_DIR "_Check"
 				move /Y "%%I" "_Check\" >nul
 				set "SKIP_FILE=1"
@@ -174,9 +181,9 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 	)
 )
 if "%FOUND%"=="0" (
-    echo No files found.
+	echo No files found.
 ) else (
-    powershell -command "$o=ls . -inc *.mkv,*.mp4,*.avi,*.webm; $s=0; $d=0; foreach($f in $o){$c='_Converted\'+$f.Name; if(test-path $c){$s+=$f.Length; $d+=(ls $c).Length}}; if($s -gt 0){write-host ('[INFO] Savings: {0:N2} GB ({1:P1})' -f (($s-$d)/1GB), (($s-$d)/$s)) -fg Green}"
+	powershell -command "$o=ls . -inc *.mkv,*.mp4,*.avi,*.webm; $s=0; $d=0; foreach($f in $o){$c='_Converted\'+$f.Name; if(test-path $c){$s+=$f.Length; $d+=(ls $c).Length}}; if($s -gt 0){write-host ('[INFO] Savings: {0:N2} GB ({1:P1})' -f (($s-$d)/1GB), (($s-$d)/$s)) -fg Green}"
 )
 exit /b
 
@@ -386,8 +393,8 @@ set "FILE=%~1"
 set "PS_SCRIPT=%TEMP%\edit_tags_%RANDOM%.ps1"
 set "PS_SET_FILE=%TEMP%\edit_tags_set_%RANDOM%.cmd"
 
-if exist "%PS_SCRIPT%" del "%PS_SCRIPT%"
-if exist "%PS_SET_FILE%" del "%PS_SET_FILE%"
+if exist "%PS_SCRIPT%" del /F "%PS_SCRIPT%"
+if exist "%PS_SET_FILE%" del /F "%PS_SET_FILE%"
 
 for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_EDIT_TAGS_BEGIN#" "%~f0"`) do set /a S=%%A
 for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_EDIT_TAGS_END#"   "%~f0"`) do set /a E=%%A-S
@@ -434,8 +441,8 @@ if errorlevel 1 (
 )
 
 :EDIT_TAGS_CLEANUP
-if exist "%PS_SCRIPT%" del "%PS_SCRIPT%"
-if exist "%PS_SET_FILE%" del "%PS_SET_FILE%"
+if exist "%PS_SCRIPT%" del /F "%PS_SCRIPT%"
+if exist "%PS_SET_FILE%" del /F "%PS_SET_FILE%"
 endlocal & exit /b
 
 :RUN_PROBE
@@ -447,8 +454,8 @@ set "AUTO_RES="
 set "PS_SCRIPT=%TEMP%\probe_temp_%RANDOM%.ps1"
 set "PS_SET_FILE=%TEMP%\probe_set_vars_%RANDOM%.cmd"
 set "PS_STATUS_FILE=%TEMP%\probe_status_output_%RANDOM%.tmp"
-if exist "%PS_SET_FILE%" del "%PS_SET_FILE%"
-if exist "%PS_STATUS_FILE%" del "%PS_STATUS_FILE%"
+if exist "%PS_SET_FILE%" del /F "%PS_SET_FILE%"
+if exist "%PS_STATUS_FILE%" del /F "%PS_STATUS_FILE%"
 for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_RUN_PROBE_BEGIN#" "%~f0"`) do set /a S=%%A
 for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_RUN_PROBE_END#"   "%~f0"`) do set /a E=%%A-S
 
@@ -472,9 +479,9 @@ if exist "%PS_SET_FILE%" call "%PS_SET_FILE%"
 %DBG% RUN_PROBE: NVEnc_Crop=%NVEnc_Crop%
 %DBG% RUN_PROBE: NVEnc_Res=%NVEnc_Res%
 
-if exist "%PS_SCRIPT%" del "%PS_SCRIPT%"
-if exist "%PS_SET_FILE%" del "%PS_SET_FILE%"
-if exist "%PS_STATUS_FILE%" del "%PS_STATUS_FILE%"
+if exist "%PS_SCRIPT%" del /F "%PS_SCRIPT%"
+if exist "%PS_SET_FILE%" del /F "%PS_SET_FILE%"
+if exist "%PS_STATUS_FILE%" del /F "%PS_STATUS_FILE%"
 
 if "%RC%"=="0" goto :PROBE_OK
 if "%RC%"=="8" if defined NVEnc_Crop goto :PROBE_OK
