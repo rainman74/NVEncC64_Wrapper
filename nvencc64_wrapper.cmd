@@ -3,6 +3,7 @@
 :INIT
 call :SETESC
 call :SETTOKEN
+set "FF_FLAGS=-v info -hide_banner -stats -err_detect ignore_err -fflags +genpts+igndts"
 
 if '%1'=='-h' goto USAGE
 if '%1'=='' goto USAGE
@@ -10,14 +11,11 @@ if '%1'=='' goto USAGE
 set "EDIT_TAGS=1"
 set "CHECK_ENCODED=1"
 set "DEBUG_AUTOCROP=0"
-if "%DEBUG_AUTOCROP%"=="1" (
-	set "DBG=call :DEBUG"
-) else (
-	set "DBG=call :NOP"
-)
+if "%DEBUG_AUTOCROP%"=="1" (set "DBG=call :DEBUG") else (set "DBG=call :NOP")
 
 call :VALIDATE-PARAMS %*
 if "!PARAM_ERR!"=="1" goto :END
+
 call :SETENCODER %1 %2 %3 %4 %5 %6 %7
 call :SETAUDIO	 %1 %2 %3 %4 %5 %6 %7
 call :SETCROP	 %1 %2 %3 %4 %5 %6 %7
@@ -285,8 +283,8 @@ if "%4"=="1792"				(set "CROP=--output-res 1792x1080 --crop 64,0,64,0")
 if "%4"=="1800"				(set "CROP=--output-res 1800x1080 --crop 60,0,60,0")
 if "%4"=="c1"				(set "CROP=--crop 246,6,246,6 --output-res 1440x1080")
 if "%4"=="c2"				(set "CROP=--crop 266,8,266,8 --output-res 1400x1080")
-if "%4"=="c3"				(set "CROP=")
-if "%4"=="c4"				(set "CROP=")
+if "%4"=="c3"				(set "CROP=--crop 262,10,262,10 --output-res 1420x1080")
+if "%4"=="c4"				(set "CROP=--crop 0,0,0,0 --output-res 1920x1012")
 if "%4"=="c5"				(set "CROP=")
 if "%4"=="c6"				(set "CROP=")
 exit /b
@@ -451,6 +449,8 @@ set "S=" & set "E="
 set "PROBE_OK=0"
 set "AUTO_CROP="
 set "AUTO_RES="
+set "NVEnc_Crop="
+set "NVEnc_Res="
 set "PS_SCRIPT=%TEMP%\probe_temp_%RANDOM%.ps1"
 set "PS_SET_FILE=%TEMP%\probe_set_vars_%RANDOM%.cmd"
 set "PS_STATUS_FILE=%TEMP%\probe_status_output_%RANDOM%.tmp"
@@ -521,7 +521,7 @@ set "INDENT=!SPACES:~0,%PAD1%!"
 
 set "LINE=!LEFT!["
 set FIRST=1
-set WRAP=120
+set WRAP=118
 
 for %%T in (!%TOKVAR%!) do (
 	if "!FIRST!"=="1" (
@@ -778,7 +778,11 @@ foreach($t in $j.tracks){
 		continue
 	}
 	if($type -eq 'subtitles'){
-		if($t.properties.forced_track -eq $true){
+		$isForced = $false
+		if($t.properties.forced_track -eq $true){ $isForced = $true }
+		if($name -match '(?i)forced'){ $isForced = $true }
+	
+		if($isForced){
 			if(-not $forcedDone){
 				$actions+="--edit track:$num --set flag-default=1 --set flag-forced=1"
 				$forcedDone = $true
