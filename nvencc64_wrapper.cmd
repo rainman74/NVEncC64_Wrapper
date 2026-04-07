@@ -164,7 +164,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			%DBG% FILTER_HAS_RESIZE = "!FILTER_HAS_RESIZE!"
 			%DBG% RESIZE_PARAM      = "!RESIZE_PARAM!"
 
-			nvencc64.exe --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "%%I" -c %ENCODER% --profile %PROFILE% --tier high --level auto --qvbr !QUALITY! !PRESET! --multipass 2pass-full --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\%%~nI.mkv"
+			nvencc64.exe --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "%%I" -c %ENCODER% --profile %PROFILE% --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\%%~nI.mkv"
 
 			if exist "_Converted\%%~nI.mkv" (
 				if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "_Converted\%%~nI.mkv"
@@ -194,13 +194,12 @@ if "!REQ_Q!"=="auto" (
 	if "!ACTUAL_Q!"=="none" set "ACTUAL_Q=def"
 )
 set "PRESET=--preset p7"
-set "TUNING=--tune hq"
 set "B_REF=--bframes 3 --ref 4"
-if "!ACTUAL_Q!"=="uhq"		(set "QUALITY=24" & set "TUNING=--tune uhq" & set "B_REF=--bframes 4 --ref 4")
-if "!ACTUAL_Q!"=="hq"		(set "QUALITY=26")
-if "!ACTUAL_Q!"=="def"		(set "QUALITY=28")
-if "!ACTUAL_Q!"=="lq"		(set "QUALITY=30")
-if "!ACTUAL_Q!"=="ulq"		(set "QUALITY=32" & set "TUNING=--tune undef" & set "PRESET=--preset p1")
+if "!ACTUAL_Q!"=="uhq"		(set "QUALITY=24" & set "TUNING=--tune uhq --multipass 2pass-full" & set "B_REF=--bframes 4 --ref 4")
+if "!ACTUAL_Q!"=="hq"		(set "QUALITY=26" & set "TUNING=--tune hq  --multipass 2pass-full")
+if "!ACTUAL_Q!"=="def"		(set "QUALITY=28" & set "TUNING=--tune hq  --multipass 2pass-quarter")
+if "!ACTUAL_Q!"=="lq"		(set "QUALITY=30" & set "TUNING=--tune lowlatency --multipass none")
+if "!ACTUAL_Q!"=="ulq"		(set "QUALITY=32" & set "TUNING=--tune ultralowlatency --multipass none" & set "PRESET=--preset p1")
 exit /b
 
 :SETQUALITY-H264
@@ -212,13 +211,12 @@ if "!REQ_Q!"=="auto" (
 	if "!ACTUAL_Q!"=="none" set "ACTUAL_Q=def"
 )
 set "PRESET=--preset p7"
-set "TUNING=--tune hq"
 set "B_REF=--bframes 3 --ref 4"
-if "!ACTUAL_Q!"=="uhq"		(set "QUALITY=20")
-if "!ACTUAL_Q!"=="hq"		(set "QUALITY=22")
-if "!ACTUAL_Q!"=="def"		(set "QUALITY=24")
-if "!ACTUAL_Q!"=="lq"		(set "QUALITY=26")
-if "!ACTUAL_Q!"=="ulq"		(set "QUALITY=28" & set "TUNING=--tune undef" & set "PRESET=--preset p1")
+if "!ACTUAL_Q!"=="uhq"		(set "QUALITY=20" & set "TUNING=--tune hq --multipass 2pass-full" & set "B_REF=--bframes 4 --ref 4")
+if "!ACTUAL_Q!"=="hq"		(set "QUALITY=22" & set "TUNING=--tune hq --multipass 2pass-full")
+if "!ACTUAL_Q!"=="def"		(set "QUALITY=24" & set "TUNING=--tune hq --multipass 2pass-quarter")
+if "!ACTUAL_Q!"=="lq"		(set "QUALITY=26" & set "TUNING=--tune lowlatency --multipass none")
+if "!ACTUAL_Q!"=="ulq"		(set "QUALITY=28" & set "TUNING=--tune ultralowlatency --multipass none" & set "PRESET=--preset p1")
 exit /b
 
 :SETENCODER
@@ -237,7 +235,7 @@ if "%2"=="copy1"			(set "AUDIO=--audio-copy 1")
 if "%2"=="copy2"			(set "AUDIO=--audio-copy 2")
 if "%2"=="copy12"			(set "AUDIO=--audio-copy 1,2")
 if "%2"=="copy23"			(set "AUDIO=--audio-copy 2,3")
-if "%2"=="ac3"				(set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only")
+if "%2"=="ac3"				(set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only --audio-stream 7.1:5.1")
 if "%2"=="aac"				(set "AUDIO=--audio-codec aac --audio-bitrate stereo:128,5.1:256 --audio-encode-other-codec-only")
 if "%2"=="eac3"				(set "AUDIO=--audio-codec eac3 --audio-bitrate stereo:320,5.1:640 --audio-encode-other-codec-only")
 exit /b
