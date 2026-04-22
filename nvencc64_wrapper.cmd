@@ -3,6 +3,7 @@
 :INIT
 call :SETESC
 call :SETTOKEN
+set "FF_FLAGS=-v info -hide_banner -stats -err_detect ignore_err -fflags +genpts+igndts"
 
 if '%1'=='-h' goto USAGE
 if '%1'=='' goto USAGE
@@ -10,14 +11,11 @@ if '%1'=='' goto USAGE
 set "EDIT_TAGS=1"
 set "CHECK_ENCODED=1"
 set "DEBUG_AUTOCROP=0"
-if "%DEBUG_AUTOCROP%"=="1" (
-	set "DBG=call :DEBUG"
-) else (
-	set "DBG=call :NOP"
-)
+if "%DEBUG_AUTOCROP%"=="1" (set "DBG=call :DEBUG") else (set "DBG=call :NOP")
 
 call :VALIDATE-PARAMS %*
 if "!PARAM_ERR!"=="1" goto :END
+
 call :SETENCODER %1 %2 %3 %4 %5 %6 %7
 call :SETAUDIO	 %1 %2 %3 %4 %5 %6 %7
 call :SETCROP	 %1 %2 %3 %4 %5 %6 %7
@@ -77,7 +75,13 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 		call :ENSURE_DIR "!TARGET_DIR!"
 		set "MOVED_FILE=!TARGET_DIR!\%%~nxI"
 		echo %ESC%[91mWARNING: Source already encoded as !SRC_CODEC!. Moving file to !TARGET_DIR!.%ESC%[0m
-			move /Y "%%I" "!MOVED_FILE!" >nul
+		echo.
+		move /Y "%%I" "!MOVED_FILE!" >nul
+		
+		setlocal DisableDelayedExpansion
+		powershell -command "write-output ('file:///' + (get-item '%%~dpI').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace '!', '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
+		endlocal
+		
 		set "SKIP_FILE=1"
 		if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "!MOVED_FILE!"
 	)
@@ -108,6 +112,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			call :RUN_PROBE "%%I"
 			if "!PROBE_OK!"=="0" (
 				%DBG% RUN_PROBE failed, moving file to _Check
+				echo %ESC%[91mWARNING: Probe failed or source too small. Moving file to _Check.%ESC%[0m
 				call :ENSURE_DIR "_Check"
 				move /Y "%%I" "_Check\" >nul
 				set "SKIP_FILE=1"
@@ -159,7 +164,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			%DBG% FILTER_HAS_RESIZE = "!FILTER_HAS_RESIZE!"
 			%DBG% RESIZE_PARAM      = "!RESIZE_PARAM!"
 
-			nvencc64.exe --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "%%I" -c %ENCODER% --profile %PROFILE% --tier high --level auto --qvbr !QUALITY! !PRESET! --multipass 2pass-full --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\%%~nI.mkv"
+			nvencc64.exe --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "%%I" -c %ENCODER% --profile %PROFILE% --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\%%~nI.mkv"
 
 			if exist "_Converted\%%~nI.mkv" (
 				if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "_Converted\%%~nI.mkv"
@@ -174,9 +179,9 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 	)
 )
 if "%FOUND%"=="0" (
-    echo No files found.
+	echo No files found.
 ) else (
-    powershell -command "$o=ls . -inc *.mkv,*.mp4,*.avi,*.webm; $s=0; $d=0; foreach($f in $o){$c='_Converted\'+$f.Name; if(test-path $c){$s+=$f.Length; $d+=(ls $c).Length}}; if($s -gt 0){write-host ('[INFO] Savings: {0:N2} GB ({1:P1})' -f (($s-$d)/1GB), (($s-$d)/$s)) -fg Green}"
+	powershell -command "$o=ls . -inc *.mkv,*.mp4,*.avi,*.webm; $s=0; $d=0; foreach($f in $o){$c='_Converted\'+$f.Name; if(test-path $c){$s+=$f.Length; $d+=(ls $c).Length}}; if($s -gt 0){write-host ('[INFO] Savings: {0:N2} GB ({1:P1})' -f (($s-$d)/1GB), (($s-$d)/$s)) -fg Green}"
 )
 exit /b
 
@@ -189,13 +194,12 @@ if "!REQ_Q!"=="auto" (
 	if "!ACTUAL_Q!"=="none" set "ACTUAL_Q=def"
 )
 set "PRESET=--preset p7"
-set "TUNING=--tune hq"
 set "B_REF=--bframes 3 --ref 4"
-if "!ACTUAL_Q!"=="uhq"		(set "QUALITY=24" & set "TUNING=--tune uhq" & set "B_REF=--bframes 4 --ref 4")
-if "!ACTUAL_Q!"=="hq"		(set "QUALITY=26")
-if "!ACTUAL_Q!"=="def"		(set "QUALITY=28")
-if "!ACTUAL_Q!"=="lq"		(set "QUALITY=30")
-if "!ACTUAL_Q!"=="ulq"		(set "QUALITY=32" & set "TUNING=--tune undef" & set "PRESET=--preset p1")
+if "!ACTUAL_Q!"=="uhq"		(set "QUALITY=24" & set "TUNING=--tune uhq --multipass 2pass-full" & set "B_REF=--bframes 4 --ref 4")
+if "!ACTUAL_Q!"=="hq"		(set "QUALITY=26" & set "TUNING=--tune hq  --multipass 2pass-full")
+if "!ACTUAL_Q!"=="def"		(set "QUALITY=28" & set "TUNING=--tune hq  --multipass 2pass-quarter")
+if "!ACTUAL_Q!"=="lq"		(set "QUALITY=30" & set "TUNING=--tune lowlatency --multipass none")
+if "!ACTUAL_Q!"=="ulq"		(set "QUALITY=32" & set "TUNING=--tune ultralowlatency --multipass none" & set "PRESET=--preset p1")
 exit /b
 
 :SETQUALITY-H264
@@ -207,13 +211,12 @@ if "!REQ_Q!"=="auto" (
 	if "!ACTUAL_Q!"=="none" set "ACTUAL_Q=def"
 )
 set "PRESET=--preset p7"
-set "TUNING=--tune hq"
 set "B_REF=--bframes 3 --ref 4"
-if "!ACTUAL_Q!"=="uhq"		(set "QUALITY=20")
-if "!ACTUAL_Q!"=="hq"		(set "QUALITY=22")
-if "!ACTUAL_Q!"=="def"		(set "QUALITY=24")
-if "!ACTUAL_Q!"=="lq"		(set "QUALITY=26")
-if "!ACTUAL_Q!"=="ulq"		(set "QUALITY=28" & set "TUNING=--tune undef" & set "PRESET=--preset p1")
+if "!ACTUAL_Q!"=="uhq"		(set "QUALITY=20" & set "TUNING=--tune hq --multipass 2pass-full" & set "B_REF=--bframes 4 --ref 4")
+if "!ACTUAL_Q!"=="hq"		(set "QUALITY=22" & set "TUNING=--tune hq --multipass 2pass-full")
+if "!ACTUAL_Q!"=="def"		(set "QUALITY=24" & set "TUNING=--tune hq --multipass 2pass-quarter")
+if "!ACTUAL_Q!"=="lq"		(set "QUALITY=26" & set "TUNING=--tune lowlatency --multipass none")
+if "!ACTUAL_Q!"=="ulq"		(set "QUALITY=28" & set "TUNING=--tune ultralowlatency --multipass none" & set "PRESET=--preset p1")
 exit /b
 
 :SETENCODER
@@ -226,13 +229,13 @@ if "%1"=="av1"				(set "ENCODER=av1"	& set "PROFILE=high")
 exit /b
 
 :SETAUDIO
-set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only"
+set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only --audio-stream 7.1:5.1"
 if "%2"=="copy"				(set "AUDIO=--audio-copy")
 if "%2"=="copy1"			(set "AUDIO=--audio-copy 1")
 if "%2"=="copy2"			(set "AUDIO=--audio-copy 2")
 if "%2"=="copy12"			(set "AUDIO=--audio-copy 1,2")
 if "%2"=="copy23"			(set "AUDIO=--audio-copy 2,3")
-if "%2"=="ac3"				(set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only")
+if "%2"=="ac3"				(set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only --audio-stream 7.1:5.1")
 if "%2"=="aac"				(set "AUDIO=--audio-codec aac --audio-bitrate stereo:128,5.1:256 --audio-encode-other-codec-only")
 if "%2"=="eac3"				(set "AUDIO=--audio-codec eac3 --audio-bitrate stereo:320,5.1:640 --audio-encode-other-codec-only")
 exit /b
@@ -278,8 +281,8 @@ if "%4"=="1792"				(set "CROP=--output-res 1792x1080 --crop 64,0,64,0")
 if "%4"=="1800"				(set "CROP=--output-res 1800x1080 --crop 60,0,60,0")
 if "%4"=="c1"				(set "CROP=--crop 246,6,246,6 --output-res 1440x1080")
 if "%4"=="c2"				(set "CROP=--crop 266,8,266,8 --output-res 1400x1080")
-if "%4"=="c3"				(set "CROP=")
-if "%4"=="c4"				(set "CROP=")
+if "%4"=="c3"				(set "CROP=--crop 262,10,262,10 --output-res 1420x1080")
+if "%4"=="c4"				(set "CROP=--crop 0,0,0,0 --output-res 1920x1012")
 if "%4"=="c5"				(set "CROP=")
 if "%4"=="c6"				(set "CROP=")
 exit /b
@@ -288,13 +291,13 @@ exit /b
 set "FILTER="
 if "%5"=="none"				(set "FILTER=")
 if "%5"=="edgelevel"		(set "FILTER=--vpp-edgelevel")
-if "%5"=="smooth"			(set "FILTER=--vpp-smooth")
-if "%5"=="smooth31"			(set "FILTER=--vpp-smooth quality=6,qp=31,prec=fp32")
-if "%5"=="smooth63"			(set "FILTER=--vpp-smooth quality=6,qp=63,prec=fp32")
+if "%5"=="smooth"			(set "FILTER=--vpp-msmooth")
+if "%5"=="smooth3"			(set "FILTER=--vpp-msmooth strength=3,threshold=15.0")
+if "%5"=="smooth6"			(set "FILTER=--vpp-msmooth strength=6,threshold=30.0")
 if "%5"=="nlmeans"			(set "FILTER=--vpp-nlmeans")
 if "%5"=="gauss"			(set "FILTER=--vpp-gauss 3")
 if "%5"=="gauss5"			(set "FILTER=--vpp-gauss 5")
-if "%5"=="sharp"			(set "FILTER=--vpp-unsharp")
+if "%5"=="sharp"			(set "FILTER=--vpp-msharpen strength=1.0,threshold=15.0")
 if "%5"=="denoise"			(set "FILTER=--vpp-nvvfx-denoise strength=0")
 if "%5"=="denoisehq"		(set "FILTER=--vpp-nvvfx-denoise strength=1")
 if "%5"=="artifact"			(set "FILTER=--vpp-nvvfx-artifact-reduction mode=0")
@@ -386,8 +389,8 @@ set "FILE=%~1"
 set "PS_SCRIPT=%TEMP%\edit_tags_%RANDOM%.ps1"
 set "PS_SET_FILE=%TEMP%\edit_tags_set_%RANDOM%.cmd"
 
-if exist "%PS_SCRIPT%" del "%PS_SCRIPT%"
-if exist "%PS_SET_FILE%" del "%PS_SET_FILE%"
+if exist "%PS_SCRIPT%" del /F "%PS_SCRIPT%"
+if exist "%PS_SET_FILE%" del /F "%PS_SET_FILE%"
 
 for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_EDIT_TAGS_BEGIN#" "%~f0"`) do set /a S=%%A
 for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_EDIT_TAGS_END#"   "%~f0"`) do set /a E=%%A-S
@@ -434,8 +437,8 @@ if errorlevel 1 (
 )
 
 :EDIT_TAGS_CLEANUP
-if exist "%PS_SCRIPT%" del "%PS_SCRIPT%"
-if exist "%PS_SET_FILE%" del "%PS_SET_FILE%"
+if exist "%PS_SCRIPT%" del /F "%PS_SCRIPT%"
+if exist "%PS_SET_FILE%" del /F "%PS_SET_FILE%"
 endlocal & exit /b
 
 :RUN_PROBE
@@ -444,11 +447,13 @@ set "S=" & set "E="
 set "PROBE_OK=0"
 set "AUTO_CROP="
 set "AUTO_RES="
+set "NVEnc_Crop="
+set "NVEnc_Res="
 set "PS_SCRIPT=%TEMP%\probe_temp_%RANDOM%.ps1"
 set "PS_SET_FILE=%TEMP%\probe_set_vars_%RANDOM%.cmd"
 set "PS_STATUS_FILE=%TEMP%\probe_status_output_%RANDOM%.tmp"
-if exist "%PS_SET_FILE%" del "%PS_SET_FILE%"
-if exist "%PS_STATUS_FILE%" del "%PS_STATUS_FILE%"
+if exist "%PS_SET_FILE%" del /F "%PS_SET_FILE%"
+if exist "%PS_STATUS_FILE%" del /F "%PS_STATUS_FILE%"
 for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_RUN_PROBE_BEGIN#" "%~f0"`) do set /a S=%%A
 for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_RUN_PROBE_END#"   "%~f0"`) do set /a E=%%A-S
 
@@ -472,9 +477,9 @@ if exist "%PS_SET_FILE%" call "%PS_SET_FILE%"
 %DBG% RUN_PROBE: NVEnc_Crop=%NVEnc_Crop%
 %DBG% RUN_PROBE: NVEnc_Res=%NVEnc_Res%
 
-if exist "%PS_SCRIPT%" del "%PS_SCRIPT%"
-if exist "%PS_SET_FILE%" del "%PS_SET_FILE%"
-if exist "%PS_STATUS_FILE%" del "%PS_STATUS_FILE%"
+if exist "%PS_SCRIPT%" del /F "%PS_SCRIPT%"
+if exist "%PS_SET_FILE%" del /F "%PS_SET_FILE%"
+if exist "%PS_STATUS_FILE%" del /F "%PS_STATUS_FILE%"
 
 if "%RC%"=="0" goto :PROBE_OK
 if "%RC%"=="8" if defined NVEnc_Crop goto :PROBE_OK
@@ -514,7 +519,7 @@ set "INDENT=!SPACES:~0,%PAD1%!"
 
 set "LINE=!LEFT!["
 set FIRST=1
-set WRAP=120
+set WRAP=118
 
 for %%T in (!%TOKVAR%!) do (
 	if "!FIRST!"=="1" (
@@ -568,7 +573,7 @@ set "TOK_ENCODER=def hevc he10 h264 av1"
 set "TOK_AUDIO=copy copy1 copy2 copy12 copy23 ac3 aac eac3"
 set "TOK_QUALITY=def auto hq uhq lq ulq"
 set "TOK_CROP=none auto 696 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1348 1420 1480 1500 1764 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
-set "TOK_FILTER=none edgelevel smooth smooth31 smooth63 nlmeans gauss gauss5 sharp denoise denoisehq artifact artifacthq superres superreshq vsr vsrdenoise vsrdenoisehq vsrartifact vsrartifacthq log f1 f2 f3 f4 f5 f6"
+set "TOK_FILTER=none edgelevel smooth smooth3 smooth6 nlmeans gauss gauss5 sharp denoise denoisehq artifact artifacthq superres superreshq vsr vsrdenoise vsrdenoisehq vsrartifact vsrartifacthq log f1 f2 f3 f4 f5 f6"
 set "TOK_MODE=none deint yadif yadifbob double 23fps 25fps 30fps 60fps 29fps 59fps brighter darker vintage linear tweak HDRtoSDR HDRtoSDRR HDRtoSDRM HDRtoSDRH dv dolby-vision"
 set "TOK_DECODER=def hw sw auto"
 exit /b
@@ -771,7 +776,11 @@ foreach($t in $j.tracks){
 		continue
 	}
 	if($type -eq 'subtitles'){
-		if($t.properties.forced_track -eq $true){
+		$isForced = $false
+		if($t.properties.forced_track -eq $true){ $isForced = $true }
+		if($name -match '(?i)forced'){ $isForced = $true }
+	
+		if($isForced){
 			if(-not $forcedDone){
 				$actions+="--edit track:$num --set flag-default=1 --set flag-forced=1"
 				$forcedDone = $true
