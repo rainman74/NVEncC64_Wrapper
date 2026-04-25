@@ -5,30 +5,39 @@ call :SETESC
 call :SETTOKEN
 set "FF_FLAGS=-v info -hide_banner -stats -err_detect ignore_err -fflags +genpts+igndts"
 
+REM echo 1=+%1+
+REM echo 2=+%2+
+REM echo 3=+%3+
+REM echo 4=+%4+
+REM echo 5=+%5+
+REM echo 6=+%6+
+REM echo 7=+%7+
+REM echo 8=+%8+
+
 if '%1'=='-h' goto USAGE
 if '%1'=='' goto USAGE
 
 set "EDIT_TAGS=1"
-set "CHECK_ENCODED=1"
 set "DEBUG_AUTOCROP=0"
 if "%DEBUG_AUTOCROP%"=="1" (set "DBG=call :DEBUG") else (set "DBG=call :NOP")
 
 call :VALIDATE-PARAMS %*
 if "!PARAM_ERR!"=="1" goto :END
 
-call :SETENCODER %1 %2 %3 %4 %5 %6 %7
-call :SETAUDIO	 %1 %2 %3 %4 %5 %6 %7
-call :SETCROP	 %1 %2 %3 %4 %5 %6 %7
-call :SETFILTER	 %1 %2 %3 %4 %5 %6 %7
+call :SETENCODER %1 %2 %3 %4 %5 %6 %7 %8
+call :SETAUDIO	 %1 %2 %3 %4 %5 %6 %7 %8
+call :SETCROP	 %1 %2 %3 %4 %5 %6 %7 %8
+call :SETFILTER	 %1 %2 %3 %4 %5 %6 %7 %8
 set "FILTER_HAS_RESIZE=0"
 if defined FILTER (
 	echo(!FILTER! | findstr /i /c:"--vpp-resize" >nul && set "FILTER_HAS_RESIZE=1"
 )
-call :SETMODE	 %1 %2 %3 %4 %5 %6 %7
+call :SETMODE	 %1 %2 %3 %4 %5 %6 %7 %8
 if defined MODE (
 	echo(!MODE! | findstr /i /c:"--vpp-resize" >nul && set "FILTER_HAS_RESIZE=1"
 )
-call :SETDECODER %1 %2 %3 %4 %5 %6 %7
+call :SETDECODER %1 %2 %3 %4 %5 %6 %7 %8
+call :SETCHKENC  %1 %2 %3 %4 %5 %6 %7 %8
 set "DECODER_PARAM="
 if defined DECODER set "DECODER_PARAM=--%DECODER%"
 
@@ -352,6 +361,13 @@ if "%7"=="sw"				(set "DECODER=avsw")
 if "%7"=="auto"				(set "DECODER=")
 exit /b
 
+:SETCHKENC
+set "CHECK_ENCODED=1"
+if "%8"=="def"				(set "CHECK_ENCODED=1")
+if "%8"=="true"				(set "CHECK_ENCODED=1")
+if "%8"=="false"			(set "CHECK_ENCODED=0")
+exit /b
+
 :VALIDATE_ONE
 if "%~1"=="" exit /b
 set "VALID=0"
@@ -372,6 +388,7 @@ call :VALIDATE_ONE "%4" TOK_CROP    crop    4
 call :VALIDATE_ONE "%5" TOK_FILTER  filter  5
 call :VALIDATE_ONE "%6" TOK_MODE    mode    6
 call :VALIDATE_ONE "%7" TOK_DECODER decoder 7
+call :VALIDATE_ONE "%8" TOK_CHKENC  chkenc  8
 
 exit /b
 
@@ -542,7 +559,7 @@ endlocal & exit /b
 :USAGE
 setlocal EnableDelayedExpansion
 cls
-echo Usage: %~n0 ^<encoder^> [audio=ac3] [quality=28] [crop=none] [filter=none] [mode=none] [decoder=avhw]
+echo Usage: %~n0 ^<encoder^> [audio=ac3] [quality=28] [crop=none] [filter=none] [mode=none] [decoder=hw] [chkenc=true]
 echo.
 call :PRINT_TOK "encoder" "(required)"  TOK_ENCODER
 call :PRINT_TOK "audio"   "(def=ac3)"   TOK_AUDIO
@@ -551,13 +568,14 @@ call :PRINT_TOK "crop"    "(def=none)"  TOK_CROP
 call :PRINT_TOK "filter"  "(def=none)"  TOK_FILTER
 call :PRINT_TOK "mode"    "(def=none)"  TOK_MODE
 call :PRINT_TOK "decoder" "(def=hw)"    TOK_DECODER
+call :PRINT_TOK "chkenc"  "(def=true)"  TOK_CHKENC
 echo.
-echo Example: %~n0 ^| %UL%encoder%NO% ^| %UL%audio%NO%   ^| %UL%quality%NO% ^| %UL%crop%NO%    ^| %UL%filter%NO%  ^| %UL%mode%NO%    ^| %UL%decoder%NO% ^|
-echo Example: %~n0 ^| hevc    ^| ac3     ^|         ^|         ^|         ^|         ^|         ^|
-echo Example: %~n0 ^| hevc    ^| ac3     ^| auto    ^| auto    ^|         ^|         ^|         ^|
-echo Example: %~n0 ^| hevc    ^| copy    ^| auto    ^| 1080    ^| vsr     ^|         ^|         ^|
-echo Example: %~n0 ^| hevc    ^| copy    ^| hq      ^| 1080    ^| gauss   ^|         ^|         ^|
-echo Example: %~n0 ^| hevc    ^| copy    ^| def     ^| none    ^| none    ^| none    ^| sw      ^|
+echo Example: %~n0 ^| %UL%encoder%NO% ^| %UL%audio%NO%   ^| %UL%quality%NO% ^| %UL%crop%NO%    ^| %UL%filter%NO%  ^| %UL%mode%NO%    ^| %UL%decoder%NO% ^| %UL%chkenc%NO%  ^|
+echo Example: %~n0 ^| hevc    ^| ac3     ^|         ^|         ^|         ^|         ^|         ^|         ^|
+echo Example: %~n0 ^| hevc    ^| ac3     ^| auto    ^| auto    ^|         ^|         ^|         ^|         ^|
+echo Example: %~n0 ^| hevc    ^| copy    ^| auto    ^| 1080    ^| vsr     ^|         ^|         ^|         ^|
+echo Example: %~n0 ^| hevc    ^| copy    ^| hq      ^| 1080    ^| gauss   ^|         ^| sw      ^| true    ^|
+echo Example: %~n0 ^| hevc    ^| ac3     ^| def     ^| none    ^| none    ^| none    ^| hw      ^| false   ^|
 echo.
 endlocal
 goto :END
@@ -576,6 +594,7 @@ set "TOK_CROP=none auto 696 768 800 804 808 812 816 872 960 1012 1024 1036 1040 
 set "TOK_FILTER=none edgelevel smooth smooth3 smooth6 nlmeans gauss gauss5 sharp denoise denoisehq artifact artifacthq superres superreshq vsr vsrdenoise vsrdenoisehq vsrartifact vsrartifacthq log f1 f2 f3 f4 f5 f6"
 set "TOK_MODE=none deint yadif yadifbob double 23fps 25fps 30fps 60fps 29fps 59fps brighter darker vintage linear tweak HDRtoSDR HDRtoSDRR HDRtoSDRM HDRtoSDRH dv dolby-vision"
 set "TOK_DECODER=def hw sw auto"
+set "TOK_CHKENC=def true false"
 exit /b
 
 :NOP
