@@ -575,7 +575,7 @@ echo Example: %~n0 ^| hevc    ^| ac3     ^|         ^|         ^|         ^|    
 echo Example: %~n0 ^| hevc    ^| ac3     ^| auto    ^| auto    ^|         ^|         ^|         ^|         ^|
 echo Example: %~n0 ^| hevc    ^| copy    ^| auto    ^| 1080    ^| vsr     ^|         ^|         ^|         ^|
 echo Example: %~n0 ^| hevc    ^| copy    ^| hq      ^| 1080    ^| gauss   ^|         ^| sw      ^| true    ^|
-echo Example: %~n0 ^| hevc    ^| ac3     ^| def     ^| none    ^| none    ^| none    ^| hw      ^| false   ^|
+echo Example: %~n0 ^| hevc    ^| ac3     ^| auto    ^| auto    ^| none    ^| none    ^| hw      ^| false   ^|
 echo.
 endlocal
 goto :END
