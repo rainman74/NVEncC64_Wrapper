@@ -5,15 +5,6 @@ call :SETESC
 call :SETTOKEN
 set "FF_FLAGS=-v info -hide_banner -stats -err_detect ignore_err -fflags +genpts+igndts"
 
-REM echo 1=+%1+
-REM echo 2=+%2+
-REM echo 3=+%3+
-REM echo 4=+%4+
-REM echo 5=+%5+
-REM echo 6=+%6+
-REM echo 7=+%7+
-REM echo 8=+%8+
-
 if '%1'=='-h' goto USAGE
 if '%1'=='' goto USAGE
 
