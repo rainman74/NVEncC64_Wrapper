@@ -8,7 +8,7 @@ set "Serien=E:\Videos\#Eltern Serien\"
 for %%I in (HQ LQ) do if exist "%%I" (
 	pushd "%%I"
 	
-	for %%F in (*.mkv) do (
+	for %%F in (*.mkv *.mp4) do (
 		if exist "_Converted\%%F" (
 			echo %%F | findstr /i "S0 S1" >nul
 			if errorlevel 1 (
@@ -23,7 +23,7 @@ for %%I in (HQ LQ) do if exist "%%I" (
 	popd
 )
 
-for %%F in (*.mkv) do (
+for %%F in (*.mkv *.mp4) do (
 	if exist "_Converted\%%F" (
 		echo %%F | findstr /i "S0 S1" >nul
 		if errorlevel 1 (
@@ -40,7 +40,7 @@ for %%F in (*.mkv) do (
 if exist "_Converted" (
 	pushd "_Converted"
 
-	for %%F in (*.mkv) do (
+	for %%F in (*.mkv *.mp4) do (
 		echo %%F | findstr /i "S0 S1" >nul
 		if errorlevel 1 (
 			move "%%F" "%Filme%"
