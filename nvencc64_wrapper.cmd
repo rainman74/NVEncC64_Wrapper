@@ -550,6 +550,7 @@ endlocal & exit /b
 :USAGE
 setlocal EnableDelayedExpansion
 cls
+echo Version 2.0
 echo Usage: %~n0 ^<encoder^> [audio=ac3] [quality=28] [crop=none] [filter=none] [mode=none] [decoder=hw] [chkenc=true]
 echo.
 call :PRINT_TOK "encoder" "(required)"  TOK_ENCODER

@@ -2,6 +2,10 @@
 
 :INIT
 cd /d "%~dp0"
+echo README.md > exclude.txt
+echo .___PUSH___.cmd >> exclude.txt
+xcopy "*.cmd" "%CMDPATH%\bin\" /y /exclude:exclude.txt
+del exclude.txt
 
 :MAIN
 git add .
