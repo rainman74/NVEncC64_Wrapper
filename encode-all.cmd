@@ -1,7 +1,7 @@
 @echo off & cls & setlocal
 
 :MAIN
-call nvencc64_wrapper3 hevc ac3 auto auto
+call nvencc64_wrapper hevc ac3 auto auto
 call :DIRECTORIES
 call :VARIOUS
 goto :END
@@ -20,7 +20,7 @@ goto :EOF
 
 :EXECUTE
 if exist %dir% (pushd %dir%) else (md %dir%)
-call nvencc64_wrapper3 hevc %params%
+call nvencc64_wrapper hevc %params%
 popd
 goto :EOF
 
