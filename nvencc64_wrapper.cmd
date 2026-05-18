@@ -41,11 +41,16 @@ goto :END
 :MAIN
 call :ENSURE_DIR "_Converted"
 set "FOUND=0"
+setlocal DisableDelayedExpansion
 for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist "_Converted\%%~nI.mkv" (
 	echo %ESC%[101;93m %%I %ESC%[0m
 
 	set "FOUND=1"
 	set "FILENAME=%%~nI"
+	set "INFILE=%%I"
+	set "INBASE=%%~nI"
+	set "INNAME=%%~nxI"
+	set "INDIR=%%~dpI"
 	set "SKIP_FILE="
 	set "RESIZE_PARAM="
 	set "CROP_L=0"
@@ -54,14 +59,16 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 	set "RESIZE_REQUIRED=0"
 	set "SRC_CODEC="
 
-	for /f "usebackq delims=" %%C in (`mediainfo "--Inform=Video;%%Format%%" "%%I"`) do (
+	setlocal EnableDelayedExpansion
+
+	for /f "usebackq delims=" %%C in (`mediainfo "--Inform=Video;%%Format%%" "!INFILE!"`) do (
 		set "SRC_CODEC=%%C"
 	)
 
 	if not defined SRC_CODEC (
 		echo ERROR: Could not detect codec. Moving file to _Check.
 		call :ENSURE_DIR "_Check"
-		move /Y "%%I" "_Check\" >nul
+		move /Y "!INFILE!" "_Check\" >nul
 		set "SKIP_FILE=1"
 	) else (
 		if "%CHECK_ENCODED%"=="1" (
@@ -73,14 +80,13 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 
 	if defined TARGET_DIR (
 		call :ENSURE_DIR "!TARGET_DIR!"
-		set "MOVED_FILE=!TARGET_DIR!\%%~nxI"
+		set "MOVED_FILE=!TARGET_DIR!\!INNAME!"
 		echo %ESC%[91mWARNING: Source already encoded as !SRC_CODEC!. Moving file to !TARGET_DIR!.%ESC%[0m
 		echo.
-		move /Y "%%I" "!MOVED_FILE!" >nul
-		
-		setlocal DisableDelayedExpansion
-		powershell -command "write-output ('file:///' + (get-item '%%~dpI').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace '!', '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
-		endlocal
+		move /Y "!INFILE!" "!MOVED_FILE!" >nul
+		for %%D in ("!MOVED_FILE!") do set "INDIR=%%~dpD"
+
+		powershell -command "write-output ('file:///' + (get-item '!INDIR!').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace [char]33, '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
 		
 		set "SKIP_FILE=1"
 		if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "!MOVED_FILE!"
@@ -88,7 +94,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 
 	if not defined SKIP_FILE (
 		%DBG% ==========================================
-		%DBG% File: %%I
+		%DBG% File: !INFILE!
 		%DBG% CROP_MODE: "!CROP_MODE!"
 		%DBG% ==========================================
 
@@ -100,21 +106,19 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			call :SETQUALITY-HEVC
 		)
 
-		if "!REQ_Q!"=="auto" (
-			echo "!FILENAME!" | findstr /c:"(19" >nul || echo "!FILENAME!" | findstr /c:"(20" >nul || (
-				echo %ESC%[91mWARNING: No year found in filename. Falling back to default quality ^(!QUALITY!^).%ESC%[0m
-			)
+		if "!AUTO_Q_FALLBACK!"=="1" (
+			echo %ESC%[91mWARNING: No year found in filename. Falling back to default quality ^(!QUALITY!^).%ESC%[0m
 		)
 
 		if /i "!CROP_MODE!"=="AUTO" (
 			set "PROBE_OK=0"
 			%DBG% RUN_PROBE is being executed
-			call :RUN_PROBE "%%I"
+			call :RUN_PROBE "!INFILE!"
 			if "!PROBE_OK!"=="0" (
 				%DBG% RUN_PROBE failed, moving file to _Check
 				echo %ESC%[91mWARNING: Probe failed or source too small. Moving file to _Check.%ESC%[0m
 				call :ENSURE_DIR "_Check"
-				move /Y "%%I" "_Check\" >nul
+				move /Y "!INFILE!" "_Check\" >nul
 				set "SKIP_FILE=1"
 			) else (
 				if "!AUTO_CROP!"=="0:0:0:0" (
@@ -142,11 +146,9 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			)
 		)
 
-		setlocal DisableDelayedExpansion
-		powershell -command "write-output ('file:///' + (get-item '%%~dpI').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace '!', '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
-		endlocal
+		powershell -command "write-output ('file:///' + (get-item '!INDIR!').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace [char]33, '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
 
-		mediainfo --Inform="General;%%Duration/String2%% - %%FileSize/String4%%" "%%I"
+		mediainfo --Inform="General;%%Duration/String2%% - %%FileSize/String4%%" "!INFILE!"
 
 		%DBG% NVEnc parameters:
 		%DBG%   CROP   = "!CROP!"
@@ -164,10 +166,11 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			%DBG% FILTER_HAS_RESIZE = "!FILTER_HAS_RESIZE!"
 			%DBG% RESIZE_PARAM      = "!RESIZE_PARAM!"
 
-			nvencc64.exe --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "%%I" -c %ENCODER% --profile %PROFILE% --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\%%~nI.mkv"
+			nvencc64.exe --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "!INFILE!" -c %ENCODER% --profile %PROFILE% --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\!INBASE!.mkv"
+			if errorlevel 1 exit /b !ERRORLEVEL!
 
-			if exist "_Converted\%%~nI.mkv" (
-				if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "_Converted\%%~nI.mkv"
+			if exist "_Converted\!INBASE!.mkv" (
+				if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "_Converted\!INBASE!.mkv"
 			)
 
 			for /L %%X in (5,-1,1) do (
@@ -177,7 +180,9 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 			echo.
 		)
 	)
+	endlocal
 )
+endlocal & set "FOUND=%FOUND%"
 if "%FOUND%"=="0" (
 	echo No files found.
 ) else (
@@ -187,11 +192,12 @@ exit /b
 
 :SETQUALITY-HEVC
 set "ACTUAL_Q=!REQ_Q!"
+set "AUTO_Q_FALLBACK=0"
 if "!REQ_Q!"=="auto" (
 	set "ACTUAL_Q=none"
 	echo "!FILENAME!" | findstr /c:"(19" >nul && set "ACTUAL_Q=hq"
 	echo "!FILENAME!" | findstr /c:"(20" >nul && set "ACTUAL_Q=def"
-	if "!ACTUAL_Q!"=="none" set "ACTUAL_Q=def"
+	if "!ACTUAL_Q!"=="none" (set "ACTUAL_Q=def" & set "AUTO_Q_FALLBACK=1")
 )
 set "PRESET=--preset p7"
 set "B_REF=--bframes 3 --ref 4"
@@ -204,11 +210,12 @@ exit /b
 
 :SETQUALITY-H264
 set "ACTUAL_Q=!REQ_Q!"
+set "AUTO_Q_FALLBACK=0"
 if "!REQ_Q!"=="auto" (
 	set "ACTUAL_Q=none"
 	echo "!FILENAME!" | findstr /c:"(19" >nul && set "ACTUAL_Q=hq"
 	echo "!FILENAME!" | findstr /c:"(20" >nul && set "ACTUAL_Q=def"
-	if "!ACTUAL_Q!"=="none" set "ACTUAL_Q=def"
+	if "!ACTUAL_Q!"=="none" (set "ACTUAL_Q=def" & set "AUTO_Q_FALLBACK=1")
 )
 set "PRESET=--preset p7"
 set "B_REF=--bframes 3 --ref 4"
@@ -332,7 +339,7 @@ if "%6"=="60fps"			(set "MODE=--fps 60.0")
 if "%6"=="29fps"			(set "MODE=--fps 30000/1001")
 if "%6"=="59fps"			(set "MODE=--fps 60000/1001")
 if "%6"=="tweak"			(set "MODE=--vpp-tweak brightness=0.0,contrast=1.0,gamma=1.0,saturation=1.0,hue=0.0")
-if "%6"=="brighter"			(set "MODE=--vpp-curves preset=lighter")
+if "%6"=="lighter"			(set "MODE=--vpp-curves preset=lighter")
 if "%6"=="darker"			(set "MODE=--vpp-curves preset=darker")
 if "%6"=="vintage"			(set "MODE=--vpp-curves preset=vintage")
 if "%6"=="linear"			(set "MODE=--vpp-curves green=0/0 0.5/0.5 1/1:red=0/0 0.5/0.5 1/1:blue=0/0 0.5/0.5 1/1")
@@ -450,7 +457,7 @@ if exist "%PS_SET_FILE%" del /F "%PS_SET_FILE%"
 endlocal & exit /b
 
 :RUN_PROBE
-setlocal
+setlocal DisableDelayedExpansion
 set "S=" & set "E="
 set "PROBE_OK=0"
 set "AUTO_CROP="
@@ -475,7 +482,7 @@ powershell -NoProfile -Command ^
   "$end = $start + %E% - 1;" ^
   "$lines[$start..$end] | Out-File -FilePath '%PS_SCRIPT%' -Encoding utf8 -Force"
 
-powershell.exe -executionpolicy bypass -file "%PS_SCRIPT%" "%~1" -SetFile "%PS_SET_FILE%" -StatusFile "%PS_STATUS_FILE%"
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PS_SCRIPT%" "%~1" -SetFile "%PS_SET_FILE%" -StatusFile "%PS_STATUS_FILE%"
 
 set "RC=%ERRORLEVEL%"
 
@@ -550,7 +557,6 @@ endlocal & exit /b
 :USAGE
 setlocal EnableDelayedExpansion
 cls
-echo Version 2.0
 echo Usage: %~n0 ^<encoder^> [audio=ac3] [quality=28] [crop=none] [filter=none] [mode=none] [decoder=hw] [chkenc=true]
 echo.
 call :PRINT_TOK "encoder" "(required)"  TOK_ENCODER
@@ -584,7 +590,7 @@ set "TOK_AUDIO=copy copy1 copy2 copy12 copy23 ac3 aac eac3"
 set "TOK_QUALITY=def auto hq uhq lq ulq"
 set "TOK_CROP=none auto 696 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1348 1420 1480 1500 1764 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
 set "TOK_FILTER=none edgelevel smooth smooth3 smooth6 nlmeans gauss gauss5 sharp denoise denoisehq artifact artifacthq superres superreshq vsr vsrdenoise vsrdenoisehq vsrartifact vsrartifacthq log f1 f2 f3 f4 f5 f6"
-set "TOK_MODE=none deint yadif yadifbob double 23fps 25fps 30fps 60fps 29fps 59fps brighter darker vintage linear tweak HDRtoSDR HDRtoSDRR HDRtoSDRM HDRtoSDRH dv dolby-vision"
+set "TOK_MODE=none deint yadif yadifbob double 23fps 25fps 30fps 60fps 29fps 59fps lighter darker vintage linear tweak HDRtoSDR HDRtoSDRR HDRtoSDRM HDRtoSDRH dv dolby-vision"
 set "TOK_DECODER=def hw sw auto"
 set "TOK_CHKENC=def true false"
 exit /b
