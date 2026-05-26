@@ -206,7 +206,7 @@ Aktiviert detaillierte Ausgabe der Crop-Erkennung, NVEnc-Parameter und Zwischene
 
 - **Unbekannter Codec** → Datei wird nach `_Check/` verschoben
 - **Crop-Probe fehlgeschlagen** → Datei wird nach `_Check/` verschoben
-- **Asymmetrische schwarze Balken** → Datei wird nach `_Check/` verschoben  
+- **Asymmetrische schwarze Balken** → Datei wird nach `_Check/` verschoben
 - **Quelle zu klein** (< 1280×696) → Datei wird nach `_Check/` verschoben
 - **Tag-Edit fehlgeschlagen** → Datei wird nach `_Check/` verschoben
 
@@ -263,6 +263,6 @@ Für weiterführende Fragen: [Wiki](https://github.com/rainman74/NVEncC64_Wrappe
 
 ---
 
-## License
+## Lizenz
 
 Private use / experimental. No warranty.
