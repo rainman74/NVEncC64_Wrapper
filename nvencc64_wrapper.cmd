@@ -286,8 +286,8 @@ if "%4"=="1780"				(set "CROP=--output-res 1780x1080 --crop 70,0,70,0")
 if "%4"=="1788"				(set "CROP=--output-res 1788x1080 --crop 66,0,66,0")
 if "%4"=="1792"				(set "CROP=--output-res 1792x1080 --crop 64,0,64,0")
 if "%4"=="1800"				(set "CROP=--output-res 1800x1080 --crop 60,0,60,0")
-if "%4"=="c1"				(set "CROP=")
-if "%4"=="c2"				(set "CROP=")
+if "%4"=="c1"				(set "CROP=--crop 0,40,0,40")
+if "%4"=="c2"				(set "CROP=--output-res 1918x872 --crop 0,84,0,84")
 if "%4"=="c3"				(set "CROP=")
 if "%4"=="c4"				(set "CROP=")
 if "%4"=="c5"				(set "CROP=")
@@ -317,8 +317,8 @@ if "%5"=="vsrdenoisehq"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --
 if "%5"=="vsrartifact"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=0")
 if "%5"=="vsrartifacthq"	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=1")
 if "%5"=="log"				(set "FILTER=--log-packets input_packets.log")
-if "%5"=="f1"				(set "FILTER=")
-if "%5"=="f2"				(set "FILTER=")
+if "%5"=="f1"				(set "FILTER=--vpp-msmooth --vpp-unsharp")
+if "%5"=="f2"				(set "FILTER=--vpp-msmooth --vpp-unsharp --vpp-mpdecimate")
 if "%5"=="f3"				(set "FILTER=")
 if "%5"=="f4"				(set "FILTER=")
 if "%5"=="f5"				(set "FILTER=")
@@ -574,6 +574,8 @@ echo Example: %~n0 ^| hevc    ^| ac3     ^| auto    ^| auto    ^|         ^|    
 echo Example: %~n0 ^| hevc    ^| copy    ^| auto    ^| 1080    ^| vsr     ^|         ^|         ^|         ^|
 echo Example: %~n0 ^| hevc    ^| copy    ^| hq      ^| 1080    ^| gauss   ^|         ^| sw      ^| true    ^|
 echo Example: %~n0 ^| hevc    ^| ac3     ^| auto    ^| auto    ^| none    ^| none    ^| hw      ^| false   ^|
+echo.
+echo Example: %~n0 hevc ac3 auto auto none none hw false
 echo.
 endlocal
 goto :END
