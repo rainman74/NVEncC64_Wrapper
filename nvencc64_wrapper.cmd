@@ -249,7 +249,7 @@ exit /b
 
 :SETCROP
 set "CROP=" & set "CROP_MODE="
-if "%4"=="auto" (
+if /i "%4"=="auto" (
 	set "CROP_MODE=AUTO"
 	exit /b
 )
@@ -534,7 +534,7 @@ set "INDENT=!SPACES:~0,%PAD1%!"
 
 set "LINE=!LEFT!["
 set FIRST=1
-set WRAP=118
+set WRAP=120
 
 for %%T in (!%TOKVAR%!) do (
 	if "!FIRST!"=="1" (
