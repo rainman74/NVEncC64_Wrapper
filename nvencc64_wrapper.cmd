@@ -286,7 +286,7 @@ if "%4"=="1780"				(set "CROP=--output-res 1780x1080 --crop 70,0,70,0")
 if "%4"=="1788"				(set "CROP=--output-res 1788x1080 --crop 66,0,66,0")
 if "%4"=="1792"				(set "CROP=--output-res 1792x1080 --crop 64,0,64,0")
 if "%4"=="1800"				(set "CROP=--output-res 1800x1080 --crop 60,0,60,0")
-if "%4"=="c1"				(set "CROP=--crop 0,40,0,40")
+if "%4"=="c1"				(set "CROP=--crop 0,2,0,0")
 if "%4"=="c2"				(set "CROP=--output-res 1918x872 --crop 0,84,0,84")
 if "%4"=="c3"				(set "CROP=")
 if "%4"=="c4"				(set "CROP=")
@@ -297,7 +297,7 @@ exit /b
 :SETFILTER
 set "FILTER="
 if "%5"=="none"				(set "FILTER=")
-if "%5"=="edgelevel"		(set "FILTER=--vpp-edgelevel")
+if "%5"=="edgelevel"		(set "FILTER=--vpp-edgelevel --vpp-detailsharpen")
 if "%5"=="smooth"			(set "FILTER=--vpp-msmooth")
 if "%5"=="smooth3"			(set "FILTER=--vpp-msmooth strength=3,threshold=15.0")
 if "%5"=="smooth6"			(set "FILTER=--vpp-msmooth strength=6,threshold=30.0")
