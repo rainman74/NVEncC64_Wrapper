@@ -202,8 +202,8 @@ if "!REQ_Q!"=="auto" (
 set "PRESET=--preset p7"
 set "B_REF=--bframes 3 --ref 4"
 if "!ACTUAL_Q!"=="uhq"		(set "QUALITY=24" & set "TUNING=--tune uhq --multipass 2pass-full" & set "B_REF=--bframes 4 --ref 4")
-if "!ACTUAL_Q!"=="hq"		(set "QUALITY=26" & set "TUNING=--tune hq  --multipass 2pass-full")
-if "!ACTUAL_Q!"=="def"		(set "QUALITY=28" & set "TUNING=--tune hq  --multipass 2pass-quarter")
+if "!ACTUAL_Q!"=="hq"		(set "QUALITY=26" & set "TUNING=--tune hq  --multipass 2pass-quarter")
+if "!ACTUAL_Q!"=="def"		(set "QUALITY=28" & set "TUNING=--tune hq  --multipass none")
 if "!ACTUAL_Q!"=="lq"		(set "QUALITY=30" & set "TUNING=--tune lowlatency --multipass none")
 if "!ACTUAL_Q!"=="ulq"		(set "QUALITY=32" & set "TUNING=--tune ultralowlatency --multipass none" & set "PRESET=--preset p1")
 exit /b
@@ -220,8 +220,8 @@ if "!REQ_Q!"=="auto" (
 set "PRESET=--preset p7"
 set "B_REF=--bframes 3 --ref 4"
 if "!ACTUAL_Q!"=="uhq"		(set "QUALITY=20" & set "TUNING=--tune hq --multipass 2pass-full" & set "B_REF=--bframes 4 --ref 4")
-if "!ACTUAL_Q!"=="hq"		(set "QUALITY=22" & set "TUNING=--tune hq --multipass 2pass-full")
-if "!ACTUAL_Q!"=="def"		(set "QUALITY=24" & set "TUNING=--tune hq --multipass 2pass-quarter")
+if "!ACTUAL_Q!"=="hq"		(set "QUALITY=22" & set "TUNING=--tune hq --multipass 2pass-quarter")
+if "!ACTUAL_Q!"=="def"		(set "QUALITY=24" & set "TUNING=--tune hq --multipass none")
 if "!ACTUAL_Q!"=="lq"		(set "QUALITY=26" & set "TUNING=--tune lowlatency --multipass none")
 if "!ACTUAL_Q!"=="ulq"		(set "QUALITY=28" & set "TUNING=--tune ultralowlatency --multipass none" & set "PRESET=--preset p1")
 exit /b
@@ -288,8 +288,8 @@ if "%4"=="1792"				(set "CROP=--output-res 1792x1080 --crop 64,0,64,0")
 if "%4"=="1800"				(set "CROP=--output-res 1800x1080 --crop 60,0,60,0")
 if "%4"=="c1"				(set "CROP=--crop 0,2,0,2")
 if "%4"=="c2"				(set "CROP=--output-res 960x540")
-if "%4"=="c3"				(set "CROP=")
-if "%4"=="c4"				(set "CROP=")
+if "%4"=="c3"				(set "CROP=--output-res 960x406 --crop 4,70,4,70")
+if "%4"=="c4"				(set "CROP=--output-res 1280x720")
 if "%4"=="c5"				(set "CROP=")
 if "%4"=="c6"				(set "CROP=")
 exit /b
@@ -316,6 +316,8 @@ if "%5"=="vsrdenoise"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vp
 if "%5"=="vsrdenoisehq"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-denoise strength=1")
 if "%5"=="vsrartifact"		(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=0")
 if "%5"=="vsrartifacthq"	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --vpp-unsharp --vpp-nvvfx-artifact-reduction mode=1")
+if "%5"=="dehalo"	        (set "FILTER=--vpp-finedehalo rx=3.0,ry=3.0,ss=1.5")
+if "%5"=="dehalo2"	        (set "FILTER=--vpp-finedehalo rx=2.0,ry=2.0,ss=1.5")
 if "%5"=="log"				(set "FILTER=--log-packets input_packets.log")
 if "%5"=="f1"				(set "FILTER=--vpp-msmooth --vpp-unsharp")
 if "%5"=="f2"				(set "FILTER=--vpp-msmooth --vpp-unsharp --vpp-mpdecimate")
@@ -329,6 +331,7 @@ exit /b
 set "MODE="
 if "%6"=="none"				(set "MODE=")
 if "%6"=="deint"			(set "MODE=--interlace auto --vpp-deinterlace adaptive")
+if "%6"=="ivtc"				(set "MODE=--vpp-ivtc --vpp-decimate")
 if "%6"=="rtgmc"			(set "MODE=--vpp-rtgmc preset=slow,input_type=0,source_match=3,lossless=2")
 if "%6"=="rtgmcp"			(set "MODE=--vpp-rtgmc preset=slow,input_type=1,source_match=3,lossless=0")
 if "%6"=="double"			(set "MODE=--vpp-fruc double")
@@ -559,6 +562,7 @@ setlocal EnableDelayedExpansion
 cls
 set "USAGE_PARAMS=^<encoder^> [audio=ac3] [quality=28] [crop=none] [filter=none] [mode=none] [decoder=hw] [chkenc=true]"
 set "EXAMPLE_PARAMS=hevc ac3 auto auto none none hw false"
+set "EXAMPLE_PARAMS2=hevc ac3 auto none dehalo rtgmc"
 if defined CALLER_NAME (
     set "COMMAND=%CALLER_NAME%"
 ) else (
@@ -583,6 +587,7 @@ echo Example: %COMMAND% ^| hevc    ^| copy    ^| hq      ^| 1080    ^| gauss   ^
 echo Example: %COMMAND% ^| hevc    ^| ac3     ^| auto    ^| auto    ^| none    ^| none    ^| hw      ^| false   ^|
 echo.
 echo Example: %COMMAND% %EXAMPLE_PARAMS%
+echo Example: %COMMAND% %EXAMPLE_PARAMS2%
 echo.
 endlocal
 goto :END
@@ -598,8 +603,8 @@ set "TOK_ENCODER=def hevc he10 h264 av1"
 set "TOK_AUDIO=copy copy1 copy2 copy12 copy23 ac3 aac eac3"
 set "TOK_QUALITY=def auto hq uhq lq ulq"
 set "TOK_CROP=none auto 696 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1348 1420 1480 1500 1764 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
-set "TOK_FILTER=none edgelevel smooth smooth3 smooth6 nlmeans gauss gauss5 sharp denoise denoisehq artifact artifacthq superres superreshq vsr vsrdenoise vsrdenoisehq vsrartifact vsrartifacthq log f1 f2 f3 f4 f5 f6"
-set "TOK_MODE=none deint rtgmc rtgmcp double 23fps 25fps 30fps 60fps 29fps 59fps lighter darker vintage linear tweak HDRtoSDR HDRtoSDRR HDRtoSDRM HDRtoSDRH dv dolby-vision"
+set "TOK_FILTER=none edgelevel smooth smooth3 smooth6 nlmeans gauss gauss5 sharp denoise denoisehq artifact artifacthq superres superreshq vsr vsrdenoise vsrdenoisehq vsrartifact vsrartifacthq dehalo dehalo2 log f1 f2 f3 f4 f5 f6"
+set "TOK_MODE=none deint ivtc rtgmc rtgmcp double 23fps 25fps 30fps 60fps 29fps 59fps lighter darker vintage linear tweak HDRtoSDR HDRtoSDRR HDRtoSDRM HDRtoSDRH dv dolby-vision"
 set "TOK_DECODER=def hw sw auto"
 set "TOK_CHKENC=def true false"
 exit /b
