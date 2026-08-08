@@ -257,6 +257,7 @@ if "%4"=="none"				(set "CROP=")
 if "%4"=="43"				(set "CROP=--crop 0,0,0,0 --output-res 720x540")
 if "%4"=="169"				(set "CROP=--crop 0,0,0,0 --output-res 960x540")
 if "%4"=="696"				(set "CROP=--crop 0,192,0,192")
+if "%4"=="752"				(set "CROP=--crop 0,164,0,164")
 if "%4"=="768"				(set "CROP=--crop 0,156,0,156")
 if "%4"=="800"				(set "CROP=--crop 0,140,0,140")
 if "%4"=="804"				(set "CROP=--crop 0,138,0,138")
@@ -290,12 +291,12 @@ if "%4"=="1780"				(set "CROP=--crop 0,0,0,0 --output-res 1780x1080")
 if "%4"=="1788"				(set "CROP=--crop 0,0,0,0 --output-res 1788x1080")
 if "%4"=="1792"				(set "CROP=--crop 0,0,0,0 --output-res 1792x1080")
 if "%4"=="1800"				(set "CROP=--crop 0,0,0,0 --output-res 1800x1080")
-if "%4"=="c1"				(set "CROP=--crop 0,0,0,0")
-if "%4"=="c2"				(set "CROP=--crop 0,0,0,0")
+if "%4"=="c1"				(set "CROP=--crop 0,1,0,1")
+if "%4"=="c2"				(set "CROP=--crop 4,0,4,0")
 if "%4"=="c3"				(set "CROP=--crop 18,8,14,8 --output-res 720x540")
-if "%4"=="c4"				(set "CROP=--crop 18,8,14,8 --output-res 1440x1080")
-if "%4"=="c5"				(set "CROP=--crop 0,0,0,0")
-if "%4"=="c6"				(set "CROP=--crop 0,0,0,0")
+if "%4"=="c4"				(set "CROP=--output-res 1918x802")
+if "%4"=="c5"				(set "CROP=--crop 230,0,230,0")
+if "%4"=="c6"				(set "CROP=--crop 74,0,74,0")
 exit /b
 
 :SETFILTER
@@ -327,7 +328,7 @@ if "%5"=="f1"				(set "FILTER=--vpp-tweak brightness=-0.01,contrast=1.03 --vpp-f
 if "%5"=="f2"				(set "FILTER=--vpp-tweak brightness=-0.01,contrast=1.03 --vpp-finedehalo rx=3.0,ry=3.0 --vpp-nlmeans sigma=0.002,h=0.008,patch=5,search=7,d=2,search_t=7 --vpp-unsharp radius=3,weight=0.25 --vpp-resize algo=ngx-vsr,vsr-quality=4")
 if "%5"=="f3"				(set "FILTER=--vpp-msmooth --vpp-unsharp --vpp-mpdecimate")
 if "%5"=="f4"				(set "FILTER=")
-if "%5"=="f5"				(set "FILTER=")
+if "%5"=="f5"				(set "FILTER=--vpp-nlmeans sigma=0.002,h=0.008,patch=5,search=7,d=2,search_t=7 --vpp-msmooth --vpp-unsharp radius=3,weight=0.25")
 if "%5"=="f6"				(set "FILTER=--vpp-tweak brightness=-0.02,contrast=1.04")
 exit /b
 
@@ -606,7 +607,7 @@ exit /b
 set "TOK_ENCODER=def hevc he10 h264 av1"
 set "TOK_AUDIO=copy copy1 copy2 copy12 copy23 ac3 aac eac3"
 set "TOK_QUALITY=def auto hq uhq lq ulq"
-set "TOK_CROP=none auto 43 169 696 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1348 1408 1420 1480 1500 1620 1764 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
+set "TOK_CROP=none auto 43 169 696 752 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1348 1408 1420 1480 1500 1620 1764 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
 set "TOK_FILTER=none edgelevel smooth smoothlq smoothhq nlmeans gauss gauss5 sharp denoise denoisehq artifact artifacthq superres superreshq vsr vsrdenoise vsrdenoisehq vsrartifact vsrartifacthq dehalo dehalo2 log f1 f2 f3 f4 f5 f6"
 set "TOK_MODE=none deint ivtc rtgmc rtgmcp double 23fps 25fps 30fps 60fps 29fps 59fps lighter darker vintage linear tweak HDRtoSDR HDRtoSDRR HDRtoSDRM HDRtoSDRH dv dolby-vision"
 set "TOK_DECODER=def hw sw auto"
@@ -657,7 +658,8 @@ function Get-Median {
 }
 $StandardResolutions = @{
 	384 = @{ Crop="0:192:0:192"; Res="1920x696" }
-	312 = @{ Crop="0:156:0:156"; Res="1920x768" }
+    328 = @{ Crop="0:164:0:164"; Res="1920x752" }
+    312 = @{ Crop="0:156:0:156"; Res="1920x768" }
 	280 = @{ Crop="0:140:0:140"; Res="1920x800" }
 	276 = @{ Crop="0:138:0:138"; Res="1920x804" }
 	272 = @{ Crop="0:136:0:136"; Res="1920x808" }

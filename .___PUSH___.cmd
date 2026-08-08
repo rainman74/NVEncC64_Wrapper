@@ -9,6 +9,7 @@ xcopy "*.cmd" "%CMDPATH%\bin\" /y /exclude:exclude.txt
 del exclude.txt
 
 :MAIN
+git config --global credential.username rainman74
 git add .
 git commit -m "Updates" || echo No changes to commit.
 git push
