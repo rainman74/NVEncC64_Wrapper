@@ -291,12 +291,12 @@ if "%4"=="1780"				(set "CROP=--crop 0,0,0,0 --output-res 1780x1080")
 if "%4"=="1788"				(set "CROP=--crop 0,0,0,0 --output-res 1788x1080")
 if "%4"=="1792"				(set "CROP=--crop 0,0,0,0 --output-res 1792x1080")
 if "%4"=="1800"				(set "CROP=--crop 0,0,0,0 --output-res 1800x1080")
-if "%4"=="c1"				(set "CROP=--crop 0,1,0,1")
-if "%4"=="c2"				(set "CROP=--crop 4,0,4,0")
-if "%4"=="c3"				(set "CROP=--crop 18,8,14,8 --output-res 720x540")
-if "%4"=="c4"				(set "CROP=--output-res 1918x802")
-if "%4"=="c5"				(set "CROP=--crop 230,0,230,0")
-if "%4"=="c6"				(set "CROP=--crop 74,0,74,0")
+if "%4"=="c1"				(set "CROP=")
+if "%4"=="c2"				(set "CROP=")
+if "%4"=="c3"				(set "CROP=")
+if "%4"=="c4"				(set "CROP=")
+if "%4"=="c5"				(set "CROP=")
+if "%4"=="c6"				(set "CROP=")
 exit /b
 
 :SETFILTER
@@ -324,12 +324,12 @@ if "%5"=="vsrartifacthq"	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --
 if "%5"=="dehalo"	        (set "FILTER=--vpp-finedehalo rx=3.0,ry=3.0")
 if "%5"=="dehalo2"	        (set "FILTER=--vpp-finedehalo rx=2.0,ry=2.0")
 if "%5"=="log"				(set "FILTER=--log-packets input_packets.log")
-if "%5"=="f1"				(set "FILTER=--vpp-tweak brightness=-0.01,contrast=1.03 --vpp-finedehalo rx=3.0,ry=3.0 --vpp-nlmeans sigma=0.002,h=0.012,patch=5,search=7,d=1,search_t=7 --vpp-unsharp radius=3,weight=0.25 --vpp-resize algo=ngx-vsr,vsr-quality=4")
-if "%5"=="f2"				(set "FILTER=--vpp-tweak brightness=-0.01,contrast=1.03 --vpp-finedehalo rx=3.0,ry=3.0 --vpp-nlmeans sigma=0.002,h=0.008,patch=5,search=7,d=2,search_t=7 --vpp-unsharp radius=3,weight=0.25 --vpp-resize algo=ngx-vsr,vsr-quality=4")
-if "%5"=="f3"				(set "FILTER=--vpp-msmooth --vpp-unsharp --vpp-mpdecimate")
+if "%5"=="f1"				(set "FILTER=")
+if "%5"=="f2"				(set "FILTER=")
+if "%5"=="f3"				(set "FILTER=")
 if "%5"=="f4"				(set "FILTER=")
-if "%5"=="f5"				(set "FILTER=--vpp-nlmeans sigma=0.002,h=0.008,patch=5,search=7,d=2,search_t=7 --vpp-msmooth --vpp-unsharp radius=3,weight=0.25")
-if "%5"=="f6"				(set "FILTER=--vpp-tweak brightness=-0.02,contrast=1.04")
+if "%5"=="f5"				(set "FILTER=")
+if "%5"=="f6"				(set "FILTER=")
 exit /b
 
 :SETMODE
