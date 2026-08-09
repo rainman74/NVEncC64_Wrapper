@@ -3,14 +3,17 @@
 :INIT
 call :SETESC
 call :SETTOKEN
-set "NV_FLAGS=--vpp-onnx-model-dir "%CMDPATH%\bin\onnx_models" --vpp-nvvfx-model-dir "%NVVFX_MODEL_DIR%""
+
+set "VFX_MODEL_DIR=%NVVFX_MODEL_DIR%"
+set "ONNX_MODEL_DIR=%CMDPATH%\bin\onnx_models"
+set "NV_FLAGS=--vpp-onnx-model-dir "%ONNX_MODEL_DIR%" --vpp-nvvfx-model-dir "%VFX_MODEL_DIR%"
 
 if '%1'=='-h' goto USAGE
 if '%1'=='' goto USAGE
 
 set "EDIT_TAGS=1"
-set "DEBUG_AUTOCROP=0"
-if "%DEBUG_AUTOCROP%"=="1" (set "DBG=call :DEBUG") else (set "DBG=call :NOP")
+set "DEBUG=0"
+if "%DEBUG%"=="1" (set "DBG=call :DEBUG") else (set "DBG=call :NOP")
 
 call :VALIDATE-PARAMS %*
 if "!PARAM_ERR!"=="1" goto :END
@@ -37,158 +40,6 @@ if "!REQ_Q!"=="" set "REQ_Q=def"
 
 call :MAIN
 goto :END
-
-:MAIN
-call :ENSURE_DIR "_Converted"
-set "FOUND=0"
-setlocal DisableDelayedExpansion
-for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist "_Converted\%%~nI.mkv" (
-	echo %ESC%[101;93m %%I %ESC%[0m
-
-	set "FOUND=1"
-	set "FILENAME=%%~nI"
-	set "INFILE=%%I"
-	set "INBASE=%%~nI"
-	set "INNAME=%%~nxI"
-	set "INDIR=%%~dpI"
-	set "SKIP_FILE="
-	set "RESIZE_PARAM="
-	set "CROP_L=0"
-	set "CROP_R=0"
-	set "TARGET_DIR="
-	set "RESIZE_REQUIRED=0"
-	set "SRC_CODEC="
-
-	setlocal EnableDelayedExpansion
-
-	for /f "usebackq delims=" %%C in (`mediainfo "--Inform=Video;%%Format%%" "!INFILE!"`) do (
-		set "SRC_CODEC=%%C"
-	)
-
-	if not defined SRC_CODEC (
-		echo ERROR: Could not detect codec. Moving file to _Check.
-		call :ENSURE_DIR "_Check"
-		move /Y "!INFILE!" "_Check\" >nul
-		set "SKIP_FILE=1"
-	) else (
-		if "%CHECK_ENCODED%"=="1" (
-			if /i "!SRC_CODEC!"=="HEVC" if /i "%ENCODER%"=="hevc" set "TARGET_DIR=_Converted"
-			if /i "!SRC_CODEC!"=="AVC"  if /i "%ENCODER%"=="h264" set "TARGET_DIR=_Converted"
-			if /i "!SRC_CODEC!"=="AV1"  if /i "%ENCODER%"=="av1"  set "TARGET_DIR=_Converted"
-		)
-	)
-
-	if defined TARGET_DIR (
-		call :ENSURE_DIR "!TARGET_DIR!"
-		set "MOVED_FILE=!TARGET_DIR!\!INNAME!"
-		echo %ESC%[91mWARNING: Source already encoded as !SRC_CODEC!. Moving file to !TARGET_DIR!.%ESC%[0m
-		echo.
-		move /Y "!INFILE!" "!MOVED_FILE!" >nul
-		for %%D in ("!MOVED_FILE!") do set "INDIR=%%~dpD"
-
-		powershell -command "write-output ('file:///' + (get-item '!INDIR!').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace [char]33, '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
-		
-		set "SKIP_FILE=1"
-		if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "!MOVED_FILE!"
-	)
-
-	if not defined SKIP_FILE (
-		%DBG% ==========================================
-		%DBG% File: !INFILE!
-		%DBG% CROP_MODE: "!CROP_MODE!"
-		%DBG% ==========================================
-
-		if "%ENCODER%"=="h264" (
-			call :SETQUALITY-H264
-		) else if "%ENCODER%"=="hevc" (
-			call :SETQUALITY-HEVC
-		) else if "%ENCODER%"=="av1" (
-			call :SETQUALITY-HEVC
-		)
-
-		if "!AUTO_Q_FALLBACK!"=="1" (
-			echo %ESC%[91mWARNING: No year found in filename. Falling back to default quality ^(!QUALITY!^).%ESC%[0m
-		)
-
-		if /i "!CROP_MODE!"=="AUTO" (
-			set "PROBE_OK=0"
-			%DBG% RUN_PROBE is being executed
-			call :RUN_PROBE "!INFILE!"
-			if "!PROBE_OK!"=="0" (
-				%DBG% RUN_PROBE failed, moving file to _Check
-				echo %ESC%[91mWARNING: Probe failed or source too small. Moving file to _Check.%ESC%[0m
-				call :ENSURE_DIR "_Check"
-				move /Y "!INFILE!" "_Check\" >nul
-				set "SKIP_FILE=1"
-			) else (
-				if "!AUTO_CROP!"=="0:0:0:0" (
-					%DBG% AUTO-CROP: no crop detected, passthrough
-					set "CROP=--crop 0,0,0,0"
-					set "RESIZE_REQUIRED=0"
-					set "RESIZE_PARAM="
-				) else (
-					set "AUTO_CROP_FIX=!AUTO_CROP::=,!"
-					set "CROP=--crop !AUTO_CROP_FIX! --output-res !AUTO_RES!"
-					for /f "tokens=1,3 delims=:" %%A in ("!AUTO_CROP!") do (
-						set "CROP_L=%%A"
-						set "CROP_R=%%C"
-					)
-				)
-				%DBG% AUTO-CROP final result: !CROP!
-			)
-		)
-
-		if not "!CROP_MODE!"=="AUTO" if defined CROP (
-			echo(!CROP! | findstr /i /c:"--output-res" >nul && (
-				if not "!CROP!"=="--crop 0,0,0,0" (
-					set "RESIZE_REQUIRED=1"
-				)
-			)
-		)
-
-		powershell -command "write-output ('file:///' + (get-item '!INDIR!').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace [char]33, '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
-
-		mediainfo --Inform="General;%%Duration/String2%% - %%FileSize/String4%%" "!INFILE!"
-
-		%DBG% NVEnc parameters:
-		%DBG%   CROP   = "!CROP!"
-		%DBG%   FILTER = "!FILTER!"
-		%DBG%   MODE   = "!MODE!"
-		%DBG%   AUDIO  = "!AUDIO!"
-
-		if not defined SKIP_FILE (
-			set "RESIZE_PARAM="
-			if "!RESIZE_REQUIRED!"=="1" if "!FILTER_HAS_RESIZE!"=="0" (
-				set "RESIZE_PARAM=--vpp-resize spline36"
-			)
-
-			%DBG% RESIZE_REQUIRED   = "!RESIZE_REQUIRED!"
-			%DBG% FILTER_HAS_RESIZE = "!FILTER_HAS_RESIZE!"
-			%DBG% RESIZE_PARAM      = "!RESIZE_PARAM!"
-
-			nvencc64.exe !NV_FLAGS! --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "!INFILE!" -c !ENCODER! --profile !PROFILE! --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\!INBASE!.mkv"
-			if errorlevel 1 exit /b !ERRORLEVEL!
-
-			if exist "_Converted\!INBASE!.mkv" (
-				if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "_Converted\!INBASE!.mkv"
-			)
-
-			for /L %%X in (5,-1,1) do (
-				echo Waiting for %%X seconds...
-				timeout /t 1 >nul
-			)
-			echo.
-		)
-	)
-	endlocal
-)
-endlocal & set "FOUND=%FOUND%"
-if "%FOUND%"=="0" (
-	echo No files found.
-) else (
-	powershell -command "$o=ls . -inc *.mkv,*.mp4,*.avi,*.webm; $s=0; $d=0; foreach($f in $o){$c='_Converted\'+$f.Name; if(test-path $c){$s+=$f.Length; $d+=(ls $c).Length}}; if($s -gt 0){write-host ('[INFO] Savings: {0:N2} GB ({1:P1})' -f (($s-$d)/1GB), (($s-$d)/$s)) -fg Green}"
-)
-exit /b
 
 :SETQUALITY-HEVC
 set "ACTUAL_Q=!REQ_Q!"
@@ -374,6 +225,160 @@ if "%8"=="true"				(set "CHECK_ENCODED=1")
 if "%8"=="false"			(set "CHECK_ENCODED=0")
 exit /b
 
+:MAIN
+call :ENSURE_DIR "_Converted"
+set "FOUND=0"
+setlocal DisableDelayedExpansion
+for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist "_Converted\%%~nI.mkv" (
+	echo %ESC%[101;93m %%I %ESC%[0m
+
+	set "FOUND=1"
+	set "FILENAME=%%~nI"
+	set "INFILE=%%I"
+	set "INBASE=%%~nI"
+	set "INNAME=%%~nxI"
+	set "INDIR=%%~dpI"
+	set "SKIP_FILE="
+	set "RESIZE_PARAM="
+	set "CROP_L=0"
+	set "CROP_R=0"
+	set "TARGET_DIR="
+	set "RESIZE_REQUIRED=0"
+	set "SRC_CODEC="
+
+	setlocal EnableDelayedExpansion
+
+	for /f "usebackq delims=" %%C in (`mediainfo "--Inform=Video;%%Format%%" "!INFILE!"`) do (
+		set "SRC_CODEC=%%C"
+	)
+
+	if not defined SRC_CODEC (
+		echo ERROR: Could not detect codec. Moving file to _Check.
+		call :ENSURE_DIR "_Check"
+		move /Y "!INFILE!" "_Check\" >nul
+		set "SKIP_FILE=1"
+	) else (
+		if "%CHECK_ENCODED%"=="1" (
+			if /i "!SRC_CODEC!"=="HEVC" if /i "%ENCODER%"=="hevc" set "TARGET_DIR=_Converted"
+			if /i "!SRC_CODEC!"=="AVC"  if /i "%ENCODER%"=="h264" set "TARGET_DIR=_Converted"
+			if /i "!SRC_CODEC!"=="AV1"  if /i "%ENCODER%"=="av1"  set "TARGET_DIR=_Converted"
+		)
+	)
+
+	if defined TARGET_DIR (
+		call :ENSURE_DIR "!TARGET_DIR!"
+		set "MOVED_FILE=!TARGET_DIR!\!INNAME!"
+		echo %ESC%[91mWARNING: Source already encoded as !SRC_CODEC!. Moving file to !TARGET_DIR!.%ESC%[0m
+		echo.
+		move /Y "!INFILE!" "!MOVED_FILE!" >nul
+		for %%D in ("!MOVED_FILE!") do set "INDIR=%%~dpD"
+
+		powershell -command "write-output ('file:///' + (get-item '!INDIR!').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace [char]33, '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
+		
+		set "SKIP_FILE=1"
+		if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "!MOVED_FILE!"
+		call :REMUX_IF_NEEDED "!MOVED_FILE!" "!MOVED_FILE!"
+	)
+
+	if not defined SKIP_FILE (
+		%DBG% ==========================================
+		%DBG% File: !INFILE!
+		%DBG% CROP_MODE: "!CROP_MODE!"
+		%DBG% ==========================================
+
+		if "%ENCODER%"=="h264" (
+			call :SETQUALITY-H264
+		) else if "%ENCODER%"=="hevc" (
+			call :SETQUALITY-HEVC
+		) else if "%ENCODER%"=="av1" (
+			call :SETQUALITY-HEVC
+		)
+
+		if "!AUTO_Q_FALLBACK!"=="1" (
+			echo %ESC%[91mWARNING: No year found in filename. Falling back to default quality ^(!QUALITY!^).%ESC%[0m
+		)
+
+		if /i "!CROP_MODE!"=="AUTO" (
+			set "PROBE_OK=0"
+			%DBG% RUN_PROBE is being executed
+			call :RUN_PROBE "!INFILE!"
+			if "!PROBE_OK!"=="0" (
+				%DBG% RUN_PROBE failed, moving file to _Check
+				echo %ESC%[91mWARNING: Probe failed or source too small. Moving file to _Check.%ESC%[0m
+				call :ENSURE_DIR "_Check"
+				move /Y "!INFILE!" "_Check\" >nul
+				set "SKIP_FILE=1"
+			) else (
+				if "!AUTO_CROP!"=="0:0:0:0" (
+					%DBG% AUTO-CROP: no crop detected, passthrough
+					set "CROP=--crop 0,0,0,0"
+					set "RESIZE_REQUIRED=0"
+					set "RESIZE_PARAM="
+				) else (
+					set "AUTO_CROP_FIX=!AUTO_CROP::=,!"
+					set "CROP=--crop !AUTO_CROP_FIX! --output-res !AUTO_RES!"
+					for /f "tokens=1,3 delims=:" %%A in ("!AUTO_CROP!") do (
+						set "CROP_L=%%A"
+						set "CROP_R=%%C"
+					)
+				)
+				%DBG% AUTO-CROP final result: !CROP!
+			)
+		)
+
+		if not "!CROP_MODE!"=="AUTO" if defined CROP (
+			echo(!CROP! | findstr /i /c:"--output-res" >nul && (
+				if not "!CROP!"=="--crop 0,0,0,0" (
+					set "RESIZE_REQUIRED=1"
+				)
+			)
+		)
+
+		powershell -command "write-output ('file:///' + (get-item '!INDIR!').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace [char]33, '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
+
+		mediainfo --Inform="General;%%Duration/String2%% - %%FileSize/String4%%" "!INFILE!"
+
+		%DBG% NVEnc parameters:
+		%DBG%   CROP   = "!CROP!"
+		%DBG%   FILTER = "!FILTER!"
+		%DBG%   MODE   = "!MODE!"
+		%DBG%   AUDIO  = "!AUDIO!"
+
+		if not defined SKIP_FILE (
+			set "RESIZE_PARAM="
+			if "!RESIZE_REQUIRED!"=="1" if "!FILTER_HAS_RESIZE!"=="0" (
+				set "RESIZE_PARAM=--vpp-resize spline36"
+			)
+
+			%DBG% RESIZE_REQUIRED   = "!RESIZE_REQUIRED!"
+			%DBG% FILTER_HAS_RESIZE = "!FILTER_HAS_RESIZE!"
+			%DBG% RESIZE_PARAM      = "!RESIZE_PARAM!"
+
+			nvencc64.exe !NV_FLAGS! --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "!INFILE!" -c !ENCODER! --profile !PROFILE! --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\!INBASE!.mkv"
+			if errorlevel 1 exit /b !ERRORLEVEL!
+
+			if exist "_Converted\!INBASE!.mkv" (
+				if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "_Converted\!INBASE!.mkv"
+				call :REMUX_IF_NEEDED "!INFILE!" "_Converted\!INBASE!.mkv"
+			)
+
+			for /L %%X in (5,-1,1) do (
+				echo Waiting for %%X seconds...
+				timeout /t 1 >nul
+			)
+			echo.
+		)
+	)
+	endlocal
+)
+endlocal & set "FOUND=%FOUND%"
+if "%FOUND%"=="0" (
+	echo No files found.
+) else (
+	powershell -command "$o=ls . -inc *.mkv,*.mp4,*.avi,*.webm; $s=0; $d=0; foreach($f in $o){$c='_Converted\'+$f.Name; if(test-path $c){$s+=$f.Length; $d+=(ls $c).Length}}; if($s -gt 0){write-host ('[INFO] Savings: {0:N2} GB ({1:P1})' -f (($s-$d)/1GB), (($s-$d)/$s)) -fg Green}"
+)
+exit /b
+
 :VALIDATE_ONE
 if "%~1"=="" exit /b
 set "VALID=0"
@@ -409,6 +414,9 @@ setlocal EnableDelayedExpansion
 set "S=" & set "E="
 set "FILE=%~1"
 
+%DBG% ==== EDIT_TAGS: enter !FILE!
+for %%Z in ("!FILE!") do %DBG% EDIT_TAGS: file_size_before=%%~zZ
+
 set "PS_SCRIPT=%TEMP%\edit_tags_%RANDOM%.ps1"
 set "PS_SET_FILE=%TEMP%\edit_tags_set_%RANDOM%.cmd"
 
@@ -417,6 +425,8 @@ if exist "%PS_SET_FILE%" del /F "%PS_SET_FILE%"
 
 for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_EDIT_TAGS_BEGIN#" "%~f0"`) do set /a S=%%A
 for /f "usebackq tokens=1 delims=:" %%A in (`findstr /n "^#PS_EDIT_TAGS_END#"   "%~f0"`) do set /a E=%%A-S
+
+%DBG% EDIT_TAGS: marker_S=!S! marker_E=!E!
 
 if not defined S endlocal & exit /b 9
 set /a E=E
@@ -428,8 +438,12 @@ powershell -NoProfile -Command ^
   "$end = $start + %E% - 1;" ^
   "$lines[$start..$end] | Out-File -FilePath '%PS_SCRIPT%' -Encoding utf8 -Force"
 
+for %%Z in ("%PS_SCRIPT%") do %DBG% EDIT_TAGS: ps_script_size=%%~zZ
+
 powershell.exe -NoProfile -ExecutionPolicy Bypass ^
   -File "%PS_SCRIPT%" "%FILE%" "%PS_SET_FILE%"
+
+%DBG% EDIT_TAGS: ps_exit_code=!ERRORLEVEL!
 
 if errorlevel 1 (
   echo EDIT_TAGS PowerShell failed
@@ -445,13 +459,25 @@ if not exist "%PS_SET_FILE%" (
   endlocal & exit /b 1
 )
 
+for %%Z in ("%PS_SET_FILE%") do %DBG% EDIT_TAGS: set_file_size=%%~zZ
+
 call "%PS_SET_FILE%"
 
+if defined EDIT_ACTIONS (
+	for /f %%L in ('powershell -NoProfile -Command "Write-Output $env:EDIT_ACTIONS.Length" 2^>nul') do %DBG% EDIT_TAGS: edit_actions_length=%%L
+	%DBG% EDIT_TAGS: edit_actions_head=!EDIT_ACTIONS:~0,200!
+) else (
+	%DBG% EDIT_TAGS: edit_actions_undefined
+)
+
+%DBG% EDIT_TAGS: running mkvpropedit...
 if defined EDIT_ACTIONS (
   mkvpropedit "%FILE%" --edit info --delete title !EDIT_ACTIONS! >nul
 ) else (
   mkvpropedit "%FILE%" --edit info --delete title >nul
 )
+%DBG% EDIT_TAGS: mkvpropedit_exit_code=!ERRORLEVEL!
+
 if errorlevel 1 (
 	echo mkvpropedit failed
 	call :ENSURE_DIR "_Check"
@@ -459,10 +485,81 @@ if errorlevel 1 (
 	endlocal & exit /b 1
 )
 
+for %%Z in ("!FILE!") do %DBG% EDIT_TAGS: file_size_after=%%~zZ
+
+for /f "usebackq delims=" %%V in (`mediainfo "--Inform=Video;%%Width%%x%%Height%%" "!FILE!" 2^>nul`) do %DBG% EDIT_TAGS: mediainfo_video=%%V
+for /f "usebackq delims=" %%V in (`mediainfo "--Inform=General;%%VideoCount%%" "!FILE!" 2^>nul`) do %DBG% EDIT_TAGS: mediainfo_video_count=%%V
+for /f "usebackq delims=" %%V in (`mediainfo "--Inform=General;%%AudioCount%%" "!FILE!" 2^>nul`) do %DBG% EDIT_TAGS: mediainfo_audio_count=%%V
+for /f "usebackq delims=" %%V in (`mediainfo "--Inform=General;%%TextCount%%" "!FILE!" 2^>nul`) do %DBG% EDIT_TAGS: mediainfo_text_count=%%V
+for /f "usebackq delims=" %%N in (`ffprobe -v error -show_entries format^=nb_streams -of default^=noprint_wrappers^=1:nokey^=1 "!FILE!" 2^>nul`) do %DBG% EDIT_TAGS: ffprobe_stream_count=%%N
+for /f "usebackq tokens=1,2 delims=," %%W in (`ffprobe -v error -select_streams v:0 -show_entries stream^=width^,height -of csv^=p^=0 "!FILE!" 2^>nul`) do %DBG% EDIT_TAGS: ffprobe_video=%%Wx%%X
+
+%DBG% ==== EDIT_TAGS: exit !FILE!
+
 :EDIT_TAGS_CLEANUP
 if exist "%PS_SCRIPT%" del /F "%PS_SCRIPT%"
 if exist "%PS_SET_FILE%" del /F "%PS_SET_FILE%"
 endlocal & exit /b
+
+:REMUX_IF_NEEDED
+if not exist "%~2" exit /b 0
+setlocal EnableDelayedExpansion
+set "FILE=%~2"
+set "SOURCE=%~1"
+set "CONVERTED=%~2"
+set "NEEDS_REMUX=0"
+set "FF_STREAMS="
+set "MI_VIDEO_COUNT="
+
+REM Ground truth via ffprobe (always reliable on intact files)
+for /f "usebackq" %%N in (`ffprobe -v error -show_entries format^=nb_streams -of default^=noprint_wrappers^=1:nokey^=1 "!FILE!" 2^>nul`) do set "FF_STREAMS=%%N"
+
+REM MediaInfo's view — empty if container has parse issues
+for /f "usebackq" %%V in (`mediainfo "--Inform=General;%%VideoCount%%" "!FILE!" 2^>nul`) do set "MI_VIDEO_COUNT=%%V"
+
+%DBG% REMUX_IF_NEEDED: file=!FILE! source=!SOURCE! ff_streams=!FF_STREAMS! mi_video=!MI_VIDEO_COUNT!
+
+REM Branch 1: file is completely broken (ffprobe failed or saw 0 streams)
+%DBG% REMUX_IF_NEEDED: branch_check FF_STREAMS=[!FF_STREAMS!] MI_VIDEO=[!MI_VIDEO_COUNT!]
+if "!FF_STREAMS!"=="" goto :BRANCH_BROKEN
+if "!FF_STREAMS!"=="0" goto :BRANCH_BROKEN
+goto :BRANCH_HEALTHY
+
+:BRANCH_BROKEN
+call :ENSURE_DIR "_Check"
+set "MOVE_OK=0"
+if exist "!SOURCE!" (
+	move /Y "!SOURCE!" "_Check\" >nul
+	if not errorlevel 1 set "MOVE_OK=1"
+) else (
+	set "MOVE_OK=1"
+)
+if "!MOVE_OK!"=="1" (
+	if /i not "!SOURCE!"=="!CONVERTED!" (
+		if exist "!CONVERTED!" del /F "!CONVERTED!" >nul
+		%DBG% REMUX_IF_NEEDED: broken file, source moved to _Check, _Converted cleaned
+	) else (
+		%DBG% REMUX_IF_NEEDED: broken file, source moved to _Check (same path as _Converted)
+	)
+) else (
+	%DBG% REMUX_IF_NEEDED: broken file, move FAILED, _Converted preserved
+)
+endlocal & exit /b 0
+
+:BRANCH_HEALTHY
+REM Branch 2: re-mux if mediainfo can't parse but ffprobe can
+if defined FF_STREAMS if not defined MI_VIDEO_COUNT set "NEEDS_REMUX=1"
+if "!NEEDS_REMUX!"=="1" (
+	set "REMUX_TMP=!FILE!.remux.tmp"
+	mkvmerge -o "!REMUX_TMP!" "!FILE!" >nul 2>&1
+	if exist "!REMUX_TMP!" (
+		move /Y "!REMUX_TMP!" "!FILE!" >nul
+		%DBG% REMUX_IF_NEEDED: re-muxed
+	) else (
+		%DBG% REMUX_IF_NEEDED: mkvmerge failed, file left as-is
+	)
+)
+endlocal & exit /b 0
 
 :RUN_PROBE
 setlocal DisableDelayedExpansion
@@ -840,5 +937,5 @@ foreach($t in $j.tracks){
 		continue
 	}
 }
-"SET EDIT_ACTIONS=$($actions -join ' ')" | Out-File -Encoding Default -FilePath $SetFile
+[System.IO.File]::WriteAllText($SetFile, "SET EDIT_ACTIONS=$($actions -join ' ')", [System.Text.Encoding]::ASCII)
 #PS_EDIT_TAGS_END#
