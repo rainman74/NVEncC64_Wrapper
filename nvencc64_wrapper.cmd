@@ -6,7 +6,7 @@ call :SETTOKEN
 
 set "VFX_MODEL_DIR=%NVVFX_MODEL_DIR%"
 set "ONNX_MODEL_DIR=%CMDPATH%\bin\onnx_models"
-set "NV_FLAGS=--vpp-onnx-model-dir "%ONNX_MODEL_DIR%" --vpp-nvvfx-model-dir "%VFX_MODEL_DIR%"
+set "NV_FLAGS=--vpp-onnx-model-dir "%ONNX_MODEL_DIR%" --vpp-nvvfx-model-dir "%VFX_MODEL_DIR%""
 
 if '%1'=='-h' goto USAGE
 if '%1'=='' goto USAGE
