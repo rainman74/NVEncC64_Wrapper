@@ -67,6 +67,7 @@ Diese Fixes sind in **beide** Wrapper (`nvencc64_wrapper.cmd` und `ffmpeg_wrappe
 | 1 | SET-Datei-Encoding hart ASCII                | Z. 940                      | Z. 997                      |
 | 2 | Debug-Instrumentierung in EDIT_TAGS          | Z. 411–499 (EDIT_TAGS…EDIT_TAGS_CLEANUP) | Z. 451–539 (EDIT_TAGS…EDIT_TAGS_CLEANUP) |
 | 3 | `:REMUX_IF_NEEDED` Lavf-Fix                  | Z. 504, Calls Z. 279/361    | Z. 544, Calls Z. 298/407    |
+| 4 | Check-Encoded-Block: Re-Mux via mkvmerge    | Z. 270–296                  | (n/a — Datei existiert nicht im Repo) |
 
 Im Detail:
 
@@ -80,6 +81,8 @@ Im Detail:
    - Generischer Ansatz, weil er nicht von einem bestimmten Muxer abhängt — jede Container-Inkompatibilität wird erkannt.
    - **Wichtiger Implementierungs-Hinweis**: Branches werden via `goto :BRANCH_BROKEN` / `goto :BRANCH_HEALTHY` getrennt, NICHT via `if (...)` mit Klammern. Hintergrund: mit `setlocal EnableDelayedExpansion` + `%DBG%`-Makro-Ersetzung hat die `if`-Variante die Bedingung nicht zuverlässig ausgewertet (Empirie aus Debug-Logs: `is_broken=0` wurde angezeigt, aber Branch-1-Code lief trotzdem). Mit `goto` ist die Logik eindeutig.
    - **Subshell-Pattern für mediainfo**: Innerhalb von `setlocal EnableDelayedExpansion` würde `for /f "usebackq" %%V in ('mediainfo "--Inform=General;%VideoCount%" ...')` das `%VideoCount%` als leere Variable interpretieren (ergibt leeren String). Daher wird `cmd /c` als Subshell eingesetzt — darin werden `%%X%%` zu `%X%` aufgelöst, und mediainfo bekommt den korrekten Template-Token. Wird in EDIT_TAGS (für `%Width%x%Height%` etc.) und in `:REMUX_IF_NEEDED` (für `%VideoCount%`) einheitlich verwendet.
+
+4. **Check-Encoded-Block: Re-Mux via mkvmerge** (Z. 268–290): Für Source-Dateien mit Container != `.mkv` (z.B. `.mp4`/`.mov`/`.avi`/`.webm`, die schon im Ziel-Codec vorliegen), wird die Datei via `mkvmerge -o` re-encodet statt nur per `move` umbenannt. Hintergrund: Eine `.mp4` in `.mkv` umzubenennen erzeugt kein gültiges Matroska (Inhalt bleibt MP4-Box-Format), EDIT_TAGS (`mkvpropedit`) scheitert mit "not a Matroska file", der EDIT_TAGS-Fehlerbehandler (Z. 484) verschiebt sie nach `_Check`. Symptom: Datei geht erst nach `_Converted`, dann sofort nach `_Check` (zwei Moves). Re-Mux via mkvmerge ist schnell (Sekunden, kein Re-Encode), produziert echtes MKV-Container-Format. Für bereits `.mkv`-quellen bleibt der einfache `move`. Fallback bei mkvmerge-Fehler: einfacher `move` (mit Warnung) — Datei bleibt dann vermutlich kaputt in `_Converted`. WARNING-Message ist kontextspezifisch: `.mkv` → "Moving to", sonst → "Re-muxing to".
 
 ### Akzeptierte Design-Issues (NICHT erneut flaggen ohne Rückfrage)
 
@@ -96,7 +99,9 @@ Auch diese wurden explizit als gewollt bestätigt:
 
 ## ffmpeg_wrapper.cmd — Paralleler Wrapper
 
-Analog zu `nvencc64_wrapper.cmd` existiert `ffmpeg_wrapper.cmd` (Software-Encoder via FFmpeg). Er hat die gleiche Struktur: gleiche `SETxxx`-Routinen, gleiches EDIT_TAGS, gleiches `:REMUX_IF_NEEDED`. Die Fixes #1–#3 sind 1:1 übernommen. Wenn ein Fix in einem Wrapper gefunden/gefixt wird, muss er im anderen Wrapper nachgezogen werden — sie sind Code-Zwillinge.
+> **Stand 2026-08-11**: `ffmpeg_wrapper.cmd` ist **nicht** im Repo (Working-Dir-only, nie committed). Die Sektion bleibt hier als Referenz für den Fall, dass er wieder hinzukommt.
+
+Analog zu `nvencc64_wrapper.cmd` existiert(e) `ffmpeg_wrapper.cmd` (Software-Encoder via FFmpeg). Er hatte die gleiche Struktur: gleiche `SETxxx`-Routinen, gleiches EDIT_TAGS, gleiches `:REMUX_IF_NEEDED`. Die Fixes #1–#3 waren 1:1 übernommen. Wenn ein Fix in einem Wrapper gefunden/gefixt wird, muss er im anderen Wrapper nachgezogen werden — sie sind Code-Zwillinge.
 
 Unterschiede sind rein encoder-spezifisch (CLI-Args für ffmpeg vs nvencc64), nicht in der Steuerlogik. Kein separater Dry-Run dokumentiert — die Mapping-Tabellen sind geteilt.
 

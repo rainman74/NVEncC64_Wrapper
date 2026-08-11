@@ -267,14 +267,36 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 
 	if defined TARGET_DIR (
 		call :ENSURE_DIR "!TARGET_DIR!"
-		set "MOVED_FILE=!TARGET_DIR!\!INNAME!"
-		echo %ESC%[91mWARNING: Source already encoded as !SRC_CODEC!. Moving file to !TARGET_DIR!.%ESC%[0m
+		set "MOVED_FILE=!TARGET_DIR!\!INBASE!.mkv"
+		if /i "x!INNAME:~-4!"=="x.mkv" (
+			echo %ESC%[91mWARNING: Source already encoded as !SRC_CODEC!. Moving to !TARGET_DIR!.%ESC%[0m
+		) else (
+			echo %ESC%[91mWARNING: Source already encoded as !SRC_CODEC!. Re-muxing to !TARGET_DIR!.%ESC%[0m
+		)
 		echo.
-		move /Y "!INFILE!" "!MOVED_FILE!" >nul
+
+		REM Re-mux to normalize container. .mp4/.mov/.avi/.webm in .mkv umbenennen wuerde nicht
+		REM funktionieren, weil der Inhalt kein echtes Matroska ist — EDIT_TAGS (mkvpropedit) wuerde
+		REM scheitern und die Datei wandert in _Check. mkvmerge ist die richtige Loesung: schnell
+		REM (Sekunden), kein Re-Encode, normales MKV-Container-Output.
+		REM Sentinel 'x' prefix verhindert cmd.exe-Parse-Bug: 'if /i "x"=="y"' mit zwei
+		REM benachbarten Quotes wird sonst als '"."' missinterpretiert.
+		if /i "x!INNAME:~-4!"=="x.mkv" (
+			move /Y "!INFILE!" "!MOVED_FILE!" >nul
+		) else (
+			mkvmerge -o "!MOVED_FILE!" "!INFILE!" >nul 2>&1
+			if exist "!MOVED_FILE!" (
+				if /i not "!INFILE!"=="!MOVED_FILE!" del /F "!INFILE!" >nul
+			) else (
+				echo %ESC%[91mWARNING: mkvmerge failed, falling back to plain move ^(file may be broken^).%ESC%[0m
+				move /Y "!INFILE!" "!MOVED_FILE!" >nul
+			)
+		)
+
 		for %%D in ("!MOVED_FILE!") do set "INDIR=%%~dpD"
 
 		powershell -command "write-output ('file:///' + (get-item '!INDIR!').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace [char]33, '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
-		
+
 		set "SKIP_FILE=1"
 		if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "!MOVED_FILE!"
 		call :REMUX_IF_NEEDED "!MOVED_FILE!" "!MOVED_FILE!"
