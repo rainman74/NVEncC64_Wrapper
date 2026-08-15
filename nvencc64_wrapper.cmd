@@ -95,6 +95,7 @@ if "%2"=="copy12"			(set "AUDIO=--audio-copy 1,2")
 if "%2"=="copy23"			(set "AUDIO=--audio-copy 2,3")
 if "%2"=="ac3"				(set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only --audio-stream 7.1:5.1")
 if "%2"=="aac"				(set "AUDIO=--audio-codec aac --audio-bitrate stereo:128,5.1:256 --audio-encode-other-codec-only")
+if "%2"=="aacs"				(set "AUDIO=--audio-codec aac --audio-stream :stereo --audio-bitrate stereo:128")
 if "%2"=="eac3"				(set "AUDIO=--audio-codec eac3 --audio-bitrate stereo:320,5.1:640 --audio-encode-other-codec-only")
 exit /b
 
@@ -105,8 +106,8 @@ if /i "%4"=="auto" (
 	exit /b
 )
 if "%4"=="none"				(set "CROP=")
-if "%4"=="43"				(set "CROP=--crop 0,0,0,0 --output-res 720x540")
-if "%4"=="169"				(set "CROP=--crop 0,0,0,0 --output-res 960x540")
+if "%4"=="43"				(set "CROP=--output-res 720x540")
+if "%4"=="169"				(set "CROP=--output-res 960x540")
 if "%4"=="696"				(set "CROP=--crop 0,192,0,192")
 if "%4"=="752"				(set "CROP=--crop 0,164,0,164")
 if "%4"=="768"				(set "CROP=--crop 0,156,0,156")
@@ -121,28 +122,28 @@ if "%4"=="1012"				(set "CROP=--crop 0,34,0,34")
 if "%4"=="1024"				(set "CROP=--crop 0,28,0,28")
 if "%4"=="1036"				(set "CROP=--crop 0,22,0,22")
 if "%4"=="1040"				(set "CROP=--crop 0,20,0,20")
-if "%4"=="720"				(set "CROP=--crop 60,0,60,0 --output-res 1280x-2")
-if "%4"=="720p"				(set "CROP=--crop 64,0,64,0 --output-res -2x720")
-if "%4"=="720f"				(set "CROP=--crop 66,0,66,0 --output-res 1280x720")
-if "%4"=="1080"				(set "CROP=--crop 70,0,70,0 --output-res 1920x-2")
-if "%4"=="1080p"			(set "CROP=--crop 78,0,78,0 --output-res -2x1080")
-if "%4"=="1080f"			(set "CROP=--crop 150,0,150,0 --output-res 1920x1080")
-if "%4"=="2160"				(set "CROP=--crop 210,0,210,0 --output-res 3840x-2")
-if "%4"=="2160p"			(set "CROP=--crop 220,0,220,0 --output-res -2x2160")
-if "%4"=="2160f"			(set "CROP=--crop 250,0,250,0 --output-res 3840x2160")
-if "%4"=="1440"				(set "CROP=--crop 286,0,286,0 --output-res 1440x1080")
-if "%4"=="1348"				(set "CROP=--crop 240,0,240,0 --output-res 1348x1080")
-if "%4"=="1408"				(set "CROP=--crop 0,0,0,0 --output-res 1408x1080")
-if "%4"=="1420"				(set "CROP=--crop 0,0,0,0 --output-res 1420x1080")
-if "%4"=="1480"				(set "CROP=--crop 0,0,0,0 --output-res 1480x1080")
-if "%4"=="1500"				(set "CROP=--crop 0,0,0,0 --output-res 1500x1080")
-if "%4"=="1620"				(set "CROP=--crop 0,0,0,0 --output-res 1620x1080")
-if "%4"=="1764"				(set "CROP=--crop 0,0,0,0 --output-res 1764x1080")
-if "%4"=="1780"				(set "CROP=--crop 0,0,0,0 --output-res 1780x1080")
-if "%4"=="1788"				(set "CROP=--crop 0,0,0,0 --output-res 1788x1080")
-if "%4"=="1792"				(set "CROP=--crop 0,0,0,0 --output-res 1792x1080")
-if "%4"=="1800"				(set "CROP=--crop 0,0,0,0 --output-res 1800x1080")
-if "%4"=="c1"				(set "CROP=")
+if "%4"=="720"				(set "CROP=--output-res 1280x-2")
+if "%4"=="720p"				(set "CROP=--output-res -2x720")
+if "%4"=="720f"				(set "CROP=--output-res 1280x720")
+if "%4"=="1080"				(set "CROP=--output-res 1920x-2")
+if "%4"=="1080p"			(set "CROP=--output-res -2x1080")
+if "%4"=="1080f"			(set "CROP=--output-res 1920x1080")
+if "%4"=="2160"				(set "CROP=--output-res 3840x-2")
+if "%4"=="2160p"			(set "CROP=--output-res -2x2160")
+if "%4"=="2160f"			(set "CROP=--output-res 3840x2160")
+if "%4"=="1440"				(set "CROP=--output-res 1440x1080")
+if "%4"=="1348"				(set "CROP=--output-res 1348x1080")
+if "%4"=="1408"				(set "CROP=--output-res 1408x1080")
+if "%4"=="1420"				(set "CROP=--output-res 1420x1080")
+if "%4"=="1480"				(set "CROP=--output-res 1480x1080")
+if "%4"=="1500"				(set "CROP=--output-res 1500x1080")
+if "%4"=="1620"				(set "CROP=--output-res 1620x1080")
+if "%4"=="1764"				(set "CROP=--output-res 1764x1080")
+if "%4"=="1780"				(set "CROP=--output-res 1780x1080")
+if "%4"=="1788"				(set "CROP=--output-res 1788x1080")
+if "%4"=="1792"				(set "CROP=--output-res 1792x1080")
+if "%4"=="1800"				(set "CROP=--output-res 1800x1080")
+if "%4"=="c1"				(set "CROP=--crop 26,4,22,4 --output-res 1408x1080 --vpp-msmooth --vpp-nlmeans")
 if "%4"=="c2"				(set "CROP=")
 if "%4"=="c3"				(set "CROP=")
 if "%4"=="c4"				(set "CROP=")
@@ -175,7 +176,7 @@ if "%5"=="vsrartifacthq"	(set "FILTER=--vpp-resize algo=ngx-vsr,vsr-quality=4 --
 if "%5"=="dehalo"	        (set "FILTER=--vpp-finedehalo rx=3.0,ry=3.0")
 if "%5"=="dehalo2"	        (set "FILTER=--vpp-finedehalo rx=2.0,ry=2.0")
 if "%5"=="log"				(set "FILTER=--log-packets input_packets.log")
-if "%5"=="f1"				(set "FILTER=")
+if "%5"=="f1"				(set "FILTER=--vpp-nlmeans --vpp-msmooth")
 if "%5"=="f2"				(set "FILTER=")
 if "%5"=="f3"				(set "FILTER=")
 if "%5"=="f4"				(set "FILTER=")
@@ -275,12 +276,6 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 		)
 		echo.
 
-		REM Re-mux to normalize container. .mp4/.mov/.avi/.webm in .mkv umbenennen wuerde nicht
-		REM funktionieren, weil der Inhalt kein echtes Matroska ist — EDIT_TAGS (mkvpropedit) wuerde
-		REM scheitern und die Datei wandert in _Check. mkvmerge ist die richtige Loesung: schnell
-		REM (Sekunden), kein Re-Encode, normales MKV-Container-Output.
-		REM Sentinel 'x' prefix verhindert cmd.exe-Parse-Bug: 'if /i "x"=="y"' mit zwei
-		REM benachbarten Quotes wird sonst als '"."' missinterpretiert.
 		if /i "x!INNAME:~-4!"=="x.mkv" (
 			move /Y "!INFILE!" "!MOVED_FILE!" >nul
 		) else (
@@ -533,15 +528,12 @@ set "NEEDS_REMUX=0"
 set "FF_STREAMS="
 set "MI_VIDEO_COUNT="
 
-REM Ground truth via ffprobe (always reliable on intact files)
 for /f "usebackq" %%N in (`ffprobe -v error -show_entries format^=nb_streams -of default^=noprint_wrappers^=1:nokey^=1 "!FILE!" 2^>nul`) do set "FF_STREAMS=%%N"
 
-REM MediaInfo's view — empty if container has parse issues
 for /f "usebackq" %%V in (`mediainfo "--Inform=General;%%VideoCount%%" "!FILE!" 2^>nul`) do set "MI_VIDEO_COUNT=%%V"
 
 %DBG% REMUX_IF_NEEDED: file=!FILE! source=!SOURCE! ff_streams=!FF_STREAMS! mi_video=!MI_VIDEO_COUNT!
 
-REM Branch 1: file is completely broken (ffprobe failed or saw 0 streams)
 %DBG% REMUX_IF_NEEDED: branch_check FF_STREAMS=[!FF_STREAMS!] MI_VIDEO=[!MI_VIDEO_COUNT!]
 if "!FF_STREAMS!"=="" goto :BRANCH_BROKEN
 if "!FF_STREAMS!"=="0" goto :BRANCH_BROKEN
@@ -569,7 +561,6 @@ if "!MOVE_OK!"=="1" (
 endlocal & exit /b 0
 
 :BRANCH_HEALTHY
-REM Branch 2: re-mux if mediainfo can't parse but ffprobe can
 if defined FF_STREAMS if not defined MI_VIDEO_COUNT set "NEEDS_REMUX=1"
 if "!NEEDS_REMUX!"=="1" (
 	set "REMUX_TMP=!FILE!.remux.tmp"
@@ -724,7 +715,7 @@ exit /b
 
 :SETTOKEN
 set "TOK_ENCODER=def hevc he10 h264 av1"
-set "TOK_AUDIO=copy copy1 copy2 copy12 copy23 ac3 aac eac3"
+set "TOK_AUDIO=copy copy1 copy2 copy12 copy23 ac3 aac aacs eac3"
 set "TOK_QUALITY=def auto hq uhq lq ulq"
 set "TOK_CROP=none auto 43 169 696 752 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1348 1408 1420 1480 1500 1620 1764 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
 set "TOK_FILTER=none edgelevel smooth smoothlq smoothhq nlmeans gauss gauss5 sharp denoise denoisehq artifact artifacthq superres superreshq vsr vsrdenoise vsrdenoisehq vsrartifact vsrartifacthq dehalo dehalo2 log f1 f2 f3 f4 f5 f6"

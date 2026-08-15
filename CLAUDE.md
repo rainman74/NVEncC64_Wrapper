@@ -67,7 +67,8 @@ Diese Fixes sind in **beide** Wrapper (`nvencc64_wrapper.cmd` und `ffmpeg_wrappe
 | 1 | SET-Datei-Encoding hart ASCII                | Z. 940                      | Z. 997                      |
 | 2 | Debug-Instrumentierung in EDIT_TAGS          | Z. 411–499 (EDIT_TAGS…EDIT_TAGS_CLEANUP) | Z. 451–539 (EDIT_TAGS…EDIT_TAGS_CLEANUP) |
 | 3 | `:REMUX_IF_NEEDED` Lavf-Fix                  | Z. 504, Calls Z. 279/361    | Z. 544, Calls Z. 298/407    |
-| 4 | Check-Encoded-Block: Re-Mux via mkvmerge    | Z. 270–296                  | (n/a — Datei existiert nicht im Repo) |
+| 4 | Check-Encoded-Block: Re-Mux via mkvmerge    | Z. 270–296                  | Z. 286–321 (auch `%%Format%%` statt `%Format%` in Z. 269 für delayed-expansion-kompatibles mediainfo-Template) |
+| 5 | SETCROP-Tokens: nur Resize, kein impliziter Crop mehr | Z. 107–150                | Z. 128–172                  |
 
 Im Detail:
 
@@ -84,6 +85,19 @@ Im Detail:
 
 4. **Check-Encoded-Block: Re-Mux via mkvmerge** (Z. 268–290): Für Source-Dateien mit Container != `.mkv` (z.B. `.mp4`/`.mov`/`.avi`/`.webm`, die schon im Ziel-Codec vorliegen), wird die Datei via `mkvmerge -o` re-encodet statt nur per `move` umbenannt. Hintergrund: Eine `.mp4` in `.mkv` umzubenennen erzeugt kein gültiges Matroska (Inhalt bleibt MP4-Box-Format), EDIT_TAGS (`mkvpropedit`) scheitert mit "not a Matroska file", der EDIT_TAGS-Fehlerbehandler (Z. 484) verschiebt sie nach `_Check`. Symptom: Datei geht erst nach `_Converted`, dann sofort nach `_Check` (zwei Moves). Re-Mux via mkvmerge ist schnell (Sekunden, kein Re-Encode), produziert echtes MKV-Container-Format. Für bereits `.mkv`-quellen bleibt der einfache `move`. Fallback bei mkvmerge-Fehler: einfacher `move` (mit Warnung) — Datei bleibt dann vermutlich kaputt in `_Converted`. WARNING-Message ist kontextspezifisch: `.mkv` → "Moving to", sonst → "Re-muxing to".
 
+5. **SETCROP-Tokens aufgeräumt** (nvencc Z. 107–150, ffmpeg Z. 128–172): Tokens sind reine Resize-Befehle (`--output-res` / `scale=`), kein impliziter Crop mehr (frühere Werte wie `--crop 60,0,60,0` bei `c720` waren willkürlich und haben das Aspect-Ratio versteckt verändert). Die Tokens bedeuten jetzt:
+   - **`none`**: kein Crop, kein Resize (Source bleibt wie sie ist)
+   - **`auto`**: CROP_MODE=AUTO, RUN_PROBE ermittelt Crop autonom (impliziter H/V-Crop für Letterbox/Pillarbox)
+   - **`43`** → `--output-res 720x540` (4:3-Format)
+   - **`169`** → `--output-res 960x540` (16:9-Format)
+   - **`c696`-`c1040`** → nur V-Crop auf Ziel-Höhe (Aspect-Ratio ändert sich, für 16:9 mit Letterbox oben+unten gedacht)
+   - **`c720`/`c720p`/`c720f`**, **`c1080`/`c1080p`/`c1080f`**, **`c2160`/`c2160p`/`c2160f`**: Resize auf Standard-HD-Auflösungen, `f`-Varianten erzwingen fixe Dimension (kann zu Verzerrung führen wenn Source nicht passend)
+   - **`c1348`**, **`c1440`**: nur Resize auf 4:3-Format (Aspect-Ratio ändert sich, für 16:9-Source in 4:3-Container gedacht)
+   - **`c1408`-`c1800`**: nur Resize auf DVD-PAL-Auflösungen (Aspect-Ratio-Verzerrung wenn Source 16:9 ist, also nur für 4:3-Source gedacht)
+   - **`c1`-`c6`**: keine (leer) — früher als User-Defined-Slots dokumentiert, aktuell ungenutzt
+
+   **Faustregel**: Für Letterbox/Pillarbox-Entfernung → `c0+auto` (oder in Verbindung mit einem Resize-Token). Die expliziten Tokens machen nur Resize, keinen impliziten Crop. ffmpeg_wrapper hatte ursprünglich nur c1420-c1800, c1408 und c1620 wurden für 1:1-Sync zum nvencc_wrapper nachgerüstet.
+
 ### Akzeptierte Design-Issues (NICHT erneut flaggen ohne Rückfrage)
 
 Auch diese wurden explizit als gewollt bestätigt:
@@ -99,9 +113,9 @@ Auch diese wurden explizit als gewollt bestätigt:
 
 ## ffmpeg_wrapper.cmd — Paralleler Wrapper
 
-> **Stand 2026-08-11**: `ffmpeg_wrapper.cmd` ist **nicht** im Repo (Working-Dir-only, nie committed). Die Sektion bleibt hier als Referenz für den Fall, dass er wieder hinzukommt.
+> **Stand 2026-08-11**: `ffmpeg_wrapper.cmd` ist **nicht** im Repo (Working-Dir-only, nie committed). Existiert aber in `D:\Sources\NVEncC64_Wrapper\ffmpeg_wrapper.cmd` und in `D:\Apps\Commands\bin\ffmpeg_wrapper.cmd`. Die Sektion bleibt hier als Referenz.
 
-Analog zu `nvencc64_wrapper.cmd` existiert(e) `ffmpeg_wrapper.cmd` (Software-Encoder via FFmpeg). Er hatte die gleiche Struktur: gleiche `SETxxx`-Routinen, gleiches EDIT_TAGS, gleiches `:REMUX_IF_NEEDED`. Die Fixes #1–#3 waren 1:1 übernommen. Wenn ein Fix in einem Wrapper gefunden/gefixt wird, muss er im anderen Wrapper nachgezogen werden — sie sind Code-Zwillinge.
+Analog zu `nvencc64_wrapper.cmd` existiert `ffmpeg_wrapper.cmd` (Software-Encoder via FFmpeg). Er hat die gleiche Struktur: gleiche `SETxxx`-Routinen, gleiches EDIT_TAGS, gleiches `:REMUX_IF_NEEDED`. Die Fixes #1–#4 sind 1:1 übernommen. **Sonderfall Fix #4 im ffmpeg_wrapper**: zusätzlich wurde Z. 269 von `--Inform=Video;%Format%` auf `--Inform=Video;%%Format%%` korrigiert (im nvencc_wrapper war das schon korrekt). Mit dem einfachen `%Format%` und globalem `setlocal enabledelayedexpansion` wurde die Variable zu leer expandiert, mediainfo bekam kein Template-Token, `SRC_CODEC` blieb leer, Check-Encoded triggerte nie.
 
 Unterschiede sind rein encoder-spezifisch (CLI-Args für ffmpeg vs nvencc64), nicht in der Steuerlogik. Kein separater Dry-Run dokumentiert — die Mapping-Tabellen sind geteilt.
 
