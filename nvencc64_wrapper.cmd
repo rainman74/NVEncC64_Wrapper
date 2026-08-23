@@ -131,20 +131,21 @@ if "%4"=="1080f"			(set "CROP=--output-res 1920x1080")
 if "%4"=="2160"				(set "CROP=--output-res 3840x-2")
 if "%4"=="2160p"			(set "CROP=--output-res -2x2160")
 if "%4"=="2160f"			(set "CROP=--output-res 3840x2160")
-if "%4"=="1440"				(set "CROP=--output-res 1440x1080")
-if "%4"=="1348"				(set "CROP=--output-res 1348x1080")
-if "%4"=="1408"				(set "CROP=--output-res 1408x1080")
-if "%4"=="1420"				(set "CROP=--output-res 1420x1080")
-if "%4"=="1480"				(set "CROP=--output-res 1480x1080")
-if "%4"=="1500"				(set "CROP=--output-res 1500x1080")
-if "%4"=="1620"				(set "CROP=--output-res 1620x1080")
-if "%4"=="1764"				(set "CROP=--output-res 1764x1080")
-if "%4"=="1780"				(set "CROP=--output-res 1780x1080")
-if "%4"=="1788"				(set "CROP=--output-res 1788x1080")
-if "%4"=="1792"				(set "CROP=--output-res 1792x1080")
-if "%4"=="1800"				(set "CROP=--output-res 1800x1080")
+if "%4"=="1440"				(set "CROP=--crop 240,0,240,0 --output-res 1440x1080")
+if "%4"=="1440f"			(set "CROP=--output-res 1440x1080")
+if "%4"=="1348"				(set "CROP=--crop 286,0,286,0 --output-res 1348x1080")
+if "%4"=="1408"				(set "CROP=--crop 256,0,256,0 --output-res 1408x1080")
+if "%4"=="1420"				(set "CROP=--crop 250,0,250,0 --output-res 1420x1080")
+if "%4"=="1480"				(set "CROP=--crop 220,0,220,0 --output-res 1480x1080")
+if "%4"=="1500"				(set "CROP=--crop 210,0,210,0 --output-res 1500x1080")
+if "%4"=="1620"				(set "CROP=--crop 150,0,150,0 --output-res 1620x1080")
+if "%4"=="1764"				(set "CROP=--crop 78,0,78,0 --output-res 1764x1080")
+if "%4"=="1780"				(set "CROP=--crop 70,0,70,0 --output-res 1780x1080")
+if "%4"=="1788"				(set "CROP=--crop 66,0,66,0 --output-res 1788x1080")
+if "%4"=="1792"				(set "CROP=--crop 64,0,64,0 --output-res 1792x1080")
+if "%4"=="1800"				(set "CROP=--crop 60,0,60,0 --output-res 1800x1080")
 if "%4"=="c1"				(set "CROP=--crop 26,4,22,4 --output-res 1408x1080 --vpp-msmooth --vpp-nlmeans")
-if "%4"=="c2"				(set "CROP=")
+if "%4"=="c2"				(set "CROP=--crop 0,14,0,14")
 if "%4"=="c3"				(set "CROP=")
 if "%4"=="c4"				(set "CROP=")
 if "%4"=="c5"				(set "CROP=")
@@ -717,7 +718,7 @@ exit /b
 set "TOK_ENCODER=def hevc he10 h264 av1"
 set "TOK_AUDIO=copy copy1 copy2 copy12 copy23 ac3 aac aacs eac3"
 set "TOK_QUALITY=def auto hq uhq lq ulq"
-set "TOK_CROP=none auto 43 169 696 752 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1348 1408 1420 1480 1500 1620 1764 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
+set "TOK_CROP=none auto 43 169 696 752 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1440f 1348 1408 1420 1480 1500 1620 1764 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
 set "TOK_FILTER=none edgelevel smooth smoothlq smoothhq nlmeans gauss gauss5 sharp denoise denoisehq artifact artifacthq superres superreshq vsr vsrdenoise vsrdenoisehq vsrartifact vsrartifacthq dehalo dehalo2 log f1 f2 f3 f4 f5 f6"
 set "TOK_MODE=none deint ivtc rtgmc rtgmcp double 23fps 25fps 30fps 60fps 29fps 59fps lighter darker vintage linear tweak HDRtoSDR HDRtoSDRR HDRtoSDRM HDRtoSDRH dv dolby-vision"
 set "TOK_DECODER=def hw sw auto"
