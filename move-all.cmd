@@ -7,16 +7,18 @@ set "Serien=E:\Videos\#Eltern Serien\"
 :MAIN
 for %%I in (HQ LQ) do if exist "%%I" (
 	pushd "%%I"
-	
+
 	for %%F in (*.mkv *.mp4) do (
-		if exist "_Converted\%%F" (
-			echo %%F | findstr /i "S0 S1" >nul
-			if errorlevel 1 (
-				move "_Converted\%%F" "%Filme%"
-			) else (
-				move "_Converted\%%F" "%Serien%"
+		for %%E in (mkv mp4) do (
+			if exist "_Converted\%%~nF.%%E" (
+				echo %%~nF.%%E | findstr /i "S0 S1" >nul
+				if errorlevel 1 (
+					move "_Converted\%%~nF.%%E" "%Filme%"
+				) else (
+					move "_Converted\%%~nF.%%E" "%Serien%"
+				)
+				del /Q "%%F" 2>NUL
 			)
-			del /Q "%%F" 2>NUL
 		)
 	)
 
@@ -24,16 +26,18 @@ for %%I in (HQ LQ) do if exist "%%I" (
 )
 
 for %%F in (*.mkv *.mp4) do (
-	if exist "_Converted\%%F" (
-		echo %%F | findstr /i "S0 S1" >nul
-		if errorlevel 1 (
-			move "_Converted\%%F" "%Filme%"
-		) else (
-			move "_Converted\%%F" "%Serien%"
+	for %%E in (mkv mp4) do (
+		if exist "_Converted\%%~nF.%%E" (
+			echo %%~nF.%%E | findstr /i "S0 S1" >nul
+			if errorlevel 1 (
+				move "_Converted\%%~nF.%%E" "%Filme%"
+			) else (
+				move "_Converted\%%~nF.%%E" "%Serien%"
+			)
+			del /Q "%%F" 2>NUL
+			attrib -h "%%~nF.checked" 2>NUL
+			del /Q "%%~nF.checked" 2>NUL
 		)
-		del /Q "%%F" 2>NUL
-		attrib -h "%%~nF.checked" 2>NUL
-		del /Q "%%~nF.checked" 2>NUL
 	)
 )
 
