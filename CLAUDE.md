@@ -69,6 +69,7 @@ Diese Fixes sind in **beide** Wrapper (`nvencc64_wrapper.cmd` und `ffmpeg_wrappe
 | 3 | `:REMUX_IF_NEEDED` Lavf-Fix                  | Z. 504, Calls Z. 279/361    | Z. 544, Calls Z. 298/407    |
 | 4 | Check-Encoded-Block: Re-Mux via mkvmerge    | Z. 270–296                  | Z. 286–321 (auch `%%Format%%` statt `%Format%` in Z. 269 für delayed-expansion-kompatibles mediainfo-Template) |
 | 5 | SETCROP-Tokens: nur Resize, kein impliziter Crop mehr | Z. 107–150                | Z. 128–172                  |
+| 6 | ffmpeg-AQ-Optionen: Bindestrich statt Unterstrich    | (n/a — nvencc)             | Z. 419                       |
 
 Im Detail:
 
@@ -97,6 +98,8 @@ Im Detail:
    - **`c1`-`c6`**: keine (leer) — früher als User-Defined-Slots dokumentiert, aktuell ungenutzt
 
    **Faustregel**: Für Letterbox/Pillarbox-Entfernung → `c0+auto` (oder in Verbindung mit einem Resize-Token). Die expliziten Tokens machen nur Resize, keinen impliziten Crop. ffmpeg_wrapper hatte ursprünglich nur c1420-c1800, c1408 und c1620 wurden für 1:1-Sync zum nvencc_wrapper nachgerüstet.
+
+6. **ffmpeg-Wrapper: AQ-Optionen Bindestrich statt Unterstrich** (ffmpeg Z. 419): `-spatial_aq:v` → `-spatial-aq:v`, `-temporal_aq:v` → `-temporal-aq:v`. Die anderen Optionen im Aufruf (`-aq-strength:v`, `-rc-lookahead:v`, `-multipass:v`) waren schon mit Bindestrich. Symptom des Bugs: `Unrecognized option 'spatial_aq:v'. Error splitting the argument list: Option not found` direkt beim ffmpeg-Start.
 
 ### Akzeptierte Design-Issues (NICHT erneut flaggen ohne Rückfrage)
 
