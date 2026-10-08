@@ -105,25 +105,29 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 | Wert | Effekt |
 |------|--------|
 | `none` | Kein Filter |
-| `edgelevel` | Kantenschärfung (`--vpp-edgelevel`) |
+| `edgelevel` | Kantenschärfung (`--vpp-edgelevel --vpp-detailsharpen`) |
 | `smooth` | Motion-Smoothing (`--vpp-msmooth`) |
-| `smooth3` | Motion-Smoothing, Stärke 3 |
-| `smooth6` | Motion-Smoothing, Stärke 6 |
-| `nlmeans` | Rauschreduzierung (`--vpp-nlmeans`) |
+| `nlmeans` | Rauschreduzierung (`--vpp-nlmeans` + Unsharp) |
 | `gauss` | Weichzeichner Gauss 3px |
 | `gauss5` | Weichzeichner Gauss 5px |
 | `sharp` | Schärfung (`--vpp-msharpen`) |
-| `denoise` | NVIDIA Denoise (leicht) |
-| `denoisehq` | NVIDIA Denoise (stark) |
-| `artifact` | NVIDIA Artifact-Reduction (leicht) |
-| `artifacthq` | NVIDIA Artifact-Reduction (stark) |
-| `superres` | NVIDIA Super-Resolution (Mode 0) |
-| `superreshq` | NVIDIA Super-Resolution (Mode 1) |
-| `vsr` | NVIDIA VSR (NGX) + Unsharp |
-| `vsrdenoise` | VSR + Denoise (leicht) |
-| `vsrdenoisehq` | VSR + Denoise (stark) |
-| `vsrartifact` | VSR + Artifact-Reduction (leicht) |
-| `vsrartifacthq` | VSR + Artifact-Reduction (stark) |
+| `denoise` | NVIDIA Webcam-Denoise (leicht) |
+| `denoiseHQ` | NVIDIA Webcam-Denoise (stark) |
+| `artifact` | ngx-vsr Denoise q8 (Alias für `vsrDenoise`) |
+| `artifactHQ` | ngx-vsr Denoise q11 (Alias für `vsrDenoiseHQ`) |
+| `vsr` | NVIDIA VSR (NGX), vsr-quality=4 |
+| `vsrArtifact` | ngx-vsr Detail-Restoration q16 (Alias für `vsrDetailRestore`) |
+| `vsrArtifactHQ` | ngx-vsr Detail-Restoration q19 (Alias für `vsrDetailRestoreHQ`) |
+| `vsrDenoise` | ngx-vsr Denoise q8 (min, ohne Resize) |
+| `vsrDenoiseHQ` | ngx-vsr Denoise q11 (max, ohne Resize) |
+| `vsrDeBlur` | ngx-vsr DeBlur q12 (min, ohne Resize) |
+| `vsrDeBlurHQ` | ngx-vsr DeBlur q15 (max, ohne Resize) |
+| `vsrDetailRestore` | ngx-vsr Detail-Restoration q16 (min) |
+| `vsrDetailRestoreHQ` | ngx-vsr Detail-Restoration q19 (max) |
+| `vsrStream` | ngx-vsr Streaming q21 (min, Ampere+) |
+| `vsrStreamHQ` | ngx-vsr Streaming q23 (max, Ampere+) |
+| `deHalo` | Feines Dehalo (`--vpp-finedehalo rx=3.0,ry=3.0`) |
+| `deHalo2` | Feines Dehalo (`--vpp-finedehalo rx=2.0,ry=2.0`) |
 | `log` | Schreibt Input-Packet-Log (`--log-packets`) |
 | `f1`–`f6` | Aliase = kein Filter |
 
@@ -132,9 +136,14 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 |------|--------|
 | `none` | Kein Spezialmodus |
 | `deint` | Auto-Deinterlacing (adaptive) |
-| `yadif` | Yadif-Deinterlacing (auto) |
-| `yadifbob` | Yadif Bob (verdoppelt Framerate) |
+| `ivtc` | Inverse Telecine + Decimate (`--vpp-ivtc --vpp-decimate`) |
+| `rtgmc` | RTGMC-Deinterlacer (progressiv, preset slower) |
+| `rtgmcp` | RTGMC-Deinterlacer (Pretreatment, preset slower) |
 | `double` | FRUC-Frameverdopplung |
+| `framegen` | NVVFX Frame-Generation (medium, ×2, Ada GPU) |
+| `framegen4` | NVVFX Frame-Generation (medium, ×4, Ada GPU) |
+| `framegen8` | NVVFX Frame-Generation (medium, ×8, Ada GPU) |
+| `framegenHQ` | NVVFX Frame-Generation (high, ×2, Ada GPU) |
 | `23fps` | FPS auf 24000/1001 erzwingen |
 | `25fps` | FPS auf 25.0 erzwingen |
 | `30fps` | FPS auf 30.0 erzwingen |
@@ -146,10 +155,10 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 | `darker` | Curves dunkler |
 | `vintage` | Curves Vintage-Look |
 | `linear` | Lineare Curves (alle Kanäle) |
-| `HDRtoSDR` | HDR→SDR (BT.2390) |
-| `HDRtoSDRR` | HDR→SDR (Reinhard) |
-| `HDRtoSDRM` | HDR→SDR (Mobius) |
-| `HDRtoSDRH` | HDR→SDR (Hable) |
+| `hdrToSDR` | HDR→SDR (BT.2390) |
+| `hdrToSDRR` | HDR→SDR (Reinhard) |
+| `hdrToSDRM` | HDR→SDR (Mobius) |
+| `hdrToSDRH` | HDR→SDR (Hable) |
 | `dv` / `dolby-vision` | Dolby-Vision-Passthrough (RPU, Master-Display, MaxCLL) |
 
 #### decoder (Position 7)
@@ -233,9 +242,9 @@ nvencc64_wrapper he10 copy hq 1080 gauss sw false
 10-bit HEVC, Audio Kopie, hohe Qualität, Gauss-Weichzeichner, Software-Decoder, immer neu kodieren.
 
 ```cmd
-nvencc64_wrapper hevc eac3 auto auto vsrdenoise auto false
+nvencc64_wrapper hevc eac3 auto none vsrDenoise auto false
 ```
-HEVC, E-AC3-Audio, Auto-Qualität, Auto-Crop, VSR+Denoise, HW-Decoder, immer kodieren.
+HEVC, E-AC3-Audio, Auto-Qualität, ngx-vsr Denoise (ohne Resize), HW-Decoder, immer kodieren.
 
 ```cmd
 nvencc64_wrapper av1 aac lq 720p sharp
@@ -243,7 +252,7 @@ nvencc64_wrapper av1 aac lq 720p sharp
 AV1, AAC-Audio, niedrige Qualität, 720p Höhen-skaliert, Schärfung.
 
 ```cmd
-nvencc64_wrapper hevc ac3 auto none none HDRtoSDR
+nvencc64_wrapper hevc ac3 auto none none hdrToSDR
 ```
 HDR→SDR-Konvertierung mit BT.2390-Tonemapping.
 

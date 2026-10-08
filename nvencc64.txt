@@ -1,5 +1,5 @@
-NVEncC (x64) 9.30 (r4008) by rigaya, Aug  4 2026 12:13:43 (VC 1944/Win)
-  [NVENC API v13.0, CUDA 11.8]
+NVEncC (x64) 9.38 (r4176) by rigaya, Oct  7 2026 12:28:20 (VC 1944/Win)
+  [NVENC API v13.1, CUDA 11.8]
  reader: raw, y4m, avi, avs, vpy, avsw, avhw [H.264/AVC, H.265/HEVC, MPEG2, VP8, VP9, VC-1, MPEG1, MPEG4, AV1]
  others
   nvml       : yes
@@ -125,9 +125,11 @@ Basic Encoding Options:
                                   none, 2pass-quarter, 2pass-full
    --max-bitrate <int>          set Max Bitrate (kbps)
 
-   --dynamic-rc <int>:<int>,<param1>=<value>[,<param2>=<value>][...]
-     change the rate control mode within the specified range of output frames
+   --dynamic-rc <range>,<param1>=<value>[,<param2>=<value>][...]
+     change the rate control mode within the specified input frame or timestamp range
     params
+      start=<int>,end=<int>            inclusive input frame range
+      start-time=<float>,end-time=<float>  half-open timestamp range in seconds
       cqp=<int> or <int>:<int>:<int>
       vbr=<int>
       vbrhq=<int>
@@ -179,6 +181,7 @@ Basic Encoding Options:
                                   - disabled
                                   - each
                                   - middle
+                                  - hierarchical (AV1, API 13.1+)
    --tf-level <int>             set temporal filtering level (0 (default), 4)
                                   requires bframes >= 4
    --temporal-layers <int>      set number of temporal layers
@@ -303,10 +306,14 @@ Basic Encoding Options:
                                  if format is not specified, output format will
                                  be guessed from output file extension.
                                  set "raw" for H.264/ES output.
-   --audio-copy [<int>[,...]]   mux audio with video during output.
+   --y4m-timestamp             add XTIMEBASE to y4m header and timestamps to FRAME lines.
+   --audio-copy [<int/string>[,...]]
+                                mux audio with video during output.
                                  could be only used with
                                  avhw/avsw reader and avcodec muxer.
                                  by default copies all audio tracks.
+                                 prefix track number with ! to exclude it.
+                                 prefix language with ! to exclude it.
                                  "--audio-copy 1,2" will extract
                                  audio track #1 and #2.
    --audio-codec [<int>?]<string>
@@ -388,11 +395,16 @@ Basic Encoding Options:
    --keyfile <string>           set keyframes on frames specified in the file.
                                   frame num should start from 0.
    --sub-source <string>        input extra subtitle file.
-   --sub-copy [<int>[,...]]     copy subtitle to output file.
+   --sub-copy [<int/string>[,...]]
+                                copy subtitle to output file.
+                                 prefix track number with ! to exclude it.
+                                 prefix language with ! to exclude it.
                                  these could be only used with
                                  avhw/avsw reader and avcodec muxer.
                                  below are optional,
                                   in [<int>?], specify track number to copy.
+   --sub-codec [<int/string>?]<string>
+                                convert subtitle to specified format.
    --sub-disposition [<int>?]<string>
                                 set disposition for the specified subtitle track.
                                 disposition for the unspecified tracks will be reset.
@@ -401,7 +413,9 @@ Basic Encoding Options:
                                  - copy ... copy metadata from input (default)
                                  - clear ... do not set metadata
    --sub-bsf [<int>?]<string>   set bitstream filter to subtitle track.
-   --data-copy [<int>[,...]]       copy data stream to output file.
+   --data-copy [<int/string>[,...]]
+                                copy data stream to output file.
+                                 prefix track number or language with ! to exclude it.
    --attachment-copy [<int>[,...]] copy attachment stream to output file.
    --attachment-source <string> add file as attachment stream.
 
@@ -432,6 +446,10 @@ Basic Encoding Options:
    --input-hevc-bsf <string>    switch hevc bitstream filter used for hw decoder input
                                  - internal   ... use internal implementation (default)
                                  - libavcodec ... use hevc_mp4toannexb bsf
+
+   --adapt-resolution <int>x<int>
+                                入力途中の解像度変更で許容する最大解像度を指定する。
+                                avhwではデコーダ、avswでは入力サーフェスを指定値で確保する。
 
    --input-pixel-format <string>  set input pixel format for avdevice
    --offset-video-dts-advance  offset timestamp to cancel bframe delay
@@ -481,11 +499,15 @@ Basic Encoding Options:
       strength=<int>        0 ... conservative (default)
                             1 ... aggressive 
 
-   --vpp-nvvfx-artifact-reduction [<param1>=<value>][,<param2>=<value>][...]
-     enable nvvfx artifact reduction filter.
+   --vpp-nvvfx-framegen [<param1>=<value>][,<param2>=<value>][...]
+     enable nvvfx video frame generation (VFG) filter.
+     requires Ada GPUs (CC:8.9) or later.
     params
-      mode=<int>            0 ... conservative (default)
-                            1 ... aggressive 
+      mode=<string>         low, medium (default), high
+      multiplier=<int>      2 - 8 (default = 2)
+                            generates (multiplier - 1) frames
+                            between each input frame pair.
+      autoshotchange=<bool> enable automatic shot change detection (default = true).
 
    --vpp-nvvfx-model-dir <string> set directory which has nxxmfx models.
 
@@ -642,6 +664,20 @@ Basic Encoding Options:
       rff=<bool>                       rff flag aware     (default=on)
       timecode=<bool>                  output timecode    (default=off)
       log=<bool>                       output log         (default=off)
+
+   --vpp-nnedi-upscale [<param1>=<value>][,<param2>=<value>][...]
+     edge-directed 2x upscale using the nnedi network.
+     Output is exactly 2x the input; input width and height must be even.
+     Progressive 4:2:0, 4:4:4, or monochrome input is required.
+    params
+      nsize=<string>        8x6, 16x6, 32x6, 48x6, 8x4, 16x4, 32x4 (default)
+      nns=<int>             16, 32 (default), 64, 128, 256
+      quality=<string>      fast (default), slow
+      prescreen=<int>       2, 3, or 4 (default=2)
+      errortype=<string>    abs (default), square
+      clamp=<int>           clamp mode 0-4 (default=1)
+      shift=<string>        half-pixel correction: linear (default), cubic
+      weightfile=<string>   path of nnedi3_weights.bin
 
    --vpp-nnedi [<param1>=<value>][,<param2>=<value>][...]
      enable nnedi deinterlacer
@@ -952,8 +988,8 @@ Basic Encoding Options:
       algo=<string>             select algorithm
         auto, bilinear, bicubic, nearest, spline16, spline36, spline64, lanczos2
         lanczos3, lanczos4, lanczos5, lanczos6, lanczos7, lanczos8, mitchell, catmull-rom
-        hermite, gauss, fsr1, nis, jinc36, jinc64, jinc144, jinc256, nn, npp_linear
-        cubic, super, lanczos, nvvfx-superres, ngx-vsr, libplacebo-spline16, libplacebo-spline36
+        hermite, gauss, fsr1, nis, jinc36, jinc64, jinc144, jinc256, area, dpid
+        nn, npp_linear, cubic, super, lanczos, ngx-vsr, libplacebo-spline16, libplacebo-spline36
         libplacebo-spline64, libplacebo-nearest, libplacebo-bilinear, libplacebo-gaussian
         libplacebo-sinc, libplacebo-lanczos, libplacebo-ginseng, libplacebo-ewa-jinc
         libplacebo-ewa-lanczos, libplacebo-ewa-lanczossharp, libplacebo-ewa-lanczos4sharpest
@@ -965,20 +1001,26 @@ Basic Encoding Options:
         gauss uses Gaussian filter (p=2.0).
       sharpness=<float>         RCAS sharpness for fsr1 (default=0.50, 0.0 - 1.0)
                                  NIS USM strength for nis (default=0.50, 0.0 - 1.0)
+      dpid_lambda=<float>       for dpid: strength of detail preservation
+                                 (default=1.00, 0.0 - 4.0; 0 is area-equivalent).
       cascade=<string>          for nis: auto (default), on, off
       hdr=<string>              for nis: auto (default), sdr, pq
       b=<float>                 for bicubic: Mitchell-Netravali B parameter (default=0.00)
       c=<float>                 for bicubic: Mitchell-Netravali C parameter (default=0.60)
                                  aliases: mitchell, catmull-rom, hermite
 
-      superres-mode=<int>
-        mode for nvvfx-superres     0 ... conservative
-                                    1 ... aggressive (default)
-      superres-strength=<float>
-        strength for nvvfx-superres (0.0 - 1.0, default = 0.4)
-
       vsr-quality=<int>
-        quality for ngx-vsr
+        model/mode for ngx-vsr (NVIDIA "QualityLevel"; 0, 1 - 4, 8 - 19, 21, 23, default = 1)
+        0 = bicubic baseline (non-AI, useful as a comparison baseline)
+        8-11 = denoise, 12-15 = deblur, 16-19 = high-bitrate detail restoration
+        larger values give higher quality within 1-4, 16-19, 21 and 23,
+        and stronger effects within 8-15
+        modes 0 and 8-19 require nvngx_vsr.dll from VFX SDK 1.2 or later
+        21 / 23 = streaming (medium / ultra), require nvngx_vsr.dll from
+                  VFX SDK 1.3 or later and an Ampere or newer GPU
+      vsr-strength=<float>
+        strength for ngx-vsr (0.0 - 1.0, default = 1.0)
+        requires nvngx_vsr.dll from VFX SDK 1.3 or later
 
       pl-radius=<float>
         radius for libplacebo resample (0.0 - 16.0, default unspecified)
@@ -1033,6 +1075,26 @@ Basic Encoding Options:
       threshold=<float>         threshold of pmd (default=100.00, 0.0-255.0)
                                   lower value will preserve edge.
       useexp=<bool>             use exp function (default=true)
+
+   --vpp-bm3d [<param1>=<value>][,<param2>=<value>][...]
+     enable BM3D block matching and 3D collaborative denoise.
+     Two step: a hard threshold basic estimate, then a Wiener
+     final estimate against it.
+    params
+      profile=<string>      preset for block_step / group_size /
+                              bm_range: fast, lc, np, high.
+                              params given after profile= override it.
+      sigma=<float>         noise standard deviation
+                              (default=3.00, 0 or 0.5 - 100)
+      block_step=<int>      stride between reference patches
+                              (default=8, 1 - 8)
+      group_size=<int>      max similar blocks per 3D group
+                              (default=8, 1 - 32)
+      bm_range=<int>        half side of the block match window
+                              (default=9, 1 - 32)
+      radius=<int>          temporal radius (default=0, 0 - 4).
+                              0 = spatial only, >0 enables V-BM3D.
+      chroma=<bool>         also denoise chroma (default=false)
 
    --vpp-hqdn3d [<param1>=<value>][,<param2>=<value>][...]
      enable denoise filter by hqdn3d.
@@ -1107,8 +1169,17 @@ Basic Encoding Options:
                                 the source aspect (magnitude=rounding step), like
                                 --output-res: out_res=-2x1080 -> 1440x1080 (4:3) or
                                 1920x1080 (16:9). default: off (output stays scale*src).
-      resize=<string>           resampler for out_res (default=lanczos4):
-                                lanczos4 | spline36 | jinc144 | nis | bicubic | ...
+      resize=<string>           resampler for out_res (default=spline16):
+                                lanczos4 | spline16 | spline36 | jinc144 | nis | bicubic | ...
+
+   --vpp-lenscorrection [<param1>=<value>][,<param2>=<value>][...]
+      k1=<float>, k2=<float>     radial distortion coefficients
+      cx=<float>, cy=<float>     correction centre (default=0.5,0.5)
+      vignette=<float>           corner brightness, gain at the corner is
+                                   1+vignette. Positive removes a falloff,
+                                   negative adds one. (default=0.0, -1.0 - 4.0)
+   --vpp-v360 [<param1>=<value>][,<param2>=<value>][...]
+      in/out=equirect|flat|cubemap, yaw/pitch/roll=<float>, h_fov=<float>, w/h=<int>
 
    --vpp-onnx [<param1>=<value>][,<param2>=<value>][...]
      ONNX Runtime CNN filter: loads and runs an ONNX model directly.
@@ -1116,7 +1187,6 @@ Basic Encoding Options:
       model=<path>                model name or path to .onnx file
       provider=<string>           execution provider for inference
                                     auto (default, = cuda), cuda, tensorrt
-      prec=<string>               auto (default, TensorRT fp16) / fp16 / fp32
       colormatrix=<string>        same list as --colormatrix; onnx supports
                                     auto / auto_res / smpte170m / bt470bg
                                     / bt709 / bt2020nc
@@ -1144,8 +1214,23 @@ Basic Encoding Options:
       model=<name|path>           Registered RIFE model name or ONNX path (required)
                                   Names require --vpp-onnx-model-dir (rife_ov_models.json).
       multi=<int>                 frame-rate multiplier (>=2, default 2)
+      fps=<rate>                  target frame rate as a ratio (30000/1001)
+                                  or decimal (29.97); overrides multi.
       colormatrix=<string>        auto / bt601 / bt709 / bt2020
       colorrange=<string>         auto / tv / pc
+
+   --vpp-onnx-deint [<param1>=<value>][,<param2>=<value>][...]
+     ONNX model based deinterlacing.
+      enable=<bool>               true (default, enable filter) / false
+      model=<name>                Registered model name (required)
+                                  Names require --vpp-onnx-model-dir (onnx_deint_models.json).
+      mode=<string>               bob (default, double frame rate) / normal
+      device=<string>             inference device (backend dependent)
+      precision=<string>          inference precision (backend dependent)
+      colormatrix=<string>        same list as --colormatrix; supports
+                                  auto / auto_res / bt709 / smpte170m / bt470bg / bt2020nc
+      colorrange=<string>         same list as --colorrange; supports
+                                  auto / limited (tv) / full (pc)
 
    --vpp-onnx-cache-dir <string>   Cache compiled OpenVINO models or TensorRT engines in this folder.
 
@@ -1287,7 +1372,8 @@ Basic Encoding Options:
                                   default: auto
                                 auto, unknown, bt601, bt709, smpte240m
                                 bt2020nc, bt2020c, bt2100pq, bt2100hlg
-                                dolbyvision, ycgco, rgb, xyz
+                                dolbyvision, ycgco, rgb, xyz, ycgco-re
+                                ycgco-ro
       transfer=<string>         Output transfer function.
                                   default: auto detect
                                 unknown, srgb, bt1886, linear, gamma18
@@ -1365,6 +1451,9 @@ Basic Encoding Options:
       alpha=<int>               alpha offset (default=0, -6 - 6)
       beta=<int>                beta offset (default=0, -6 - 6)
       chroma=<bool>             process planar chroma planes (default=false)
+      grid=<int>                block boundary spacing (default=4)
+                                  4: H.264/AVC, 8: MPEG-2/MPEG-4 Part 2
+                                  aliases: h264, avc, mpeg2, mpeg4
 
    --vpp-deflicker [<param1>=<value>][,<param2>=<value>][...]
      temporal brightness stabilization filter.
@@ -1399,6 +1488,9 @@ Basic Encoding Options:
       strength=<float>          correction strength for auto/gray (default=1.00, 0.0 - 1.0)
       variance_threshold=<float>
                                 flash/fade rejection threshold (default=2.00, >0)
+      temperature=<int>         color temperature in Kelvin of the source light;
+                                  corrects it to 6500K. mode=manual, space=rgb.
+                                  (default=0 (off), 2500 - 15000)
 
    --vpp-edgelevel [<param1>=<value>][,<param2>=<value>][...]
      edgelevel filter to enhance edge.
@@ -1446,6 +1538,28 @@ Basic Encoding Options:
       excl=<bool>               enable exclusion zone (default=true)
       edgeproc=<float>          add strong edge mask to outside mask (default=0.00, 0.0 - 1.0)
       edge=<string>             edge operator (default=prewitt, prewitt|sobel|scharr|kirsch|laplacian)
+
+   --vpp-guidedfilter [<param1>=<value>][,<param2>=<value>][...]
+     edge-preserving smoothing by self-guided image filtering.
+    params
+      radius=<int>              box-filter radius (default=4, 1 - 32)
+      eps=<float>               smoothing strength (default=0.0100, 0.0001 - 1.0)
+      chroma=<bool>             filter chroma planes (default=false)
+
+   --vpp-clahe [<param1>=<value>][,<param2>=<value>][...]
+     contrast limited adaptive histogram equalization.
+    params
+      tiles_x=<int>             horizontal tile count (default=8, 2 - 32)
+      tiles_y=<int>             vertical tile count (default=8, 2 - 32)
+      slope=<float>             contrast clip ratio (default=3.0, 1.0 - 40.0)
+
+   --vpp-dehaze [<param1>=<value>][,<param2>=<value>][...]
+     luminance dehazing based on the dark channel prior.
+    params
+      patch_radius=<int>        local minimum radius (default=7, 1 - 15)
+      omega=<float>             haze removal strength (default=0.95, 0.5 - 1.0)
+      t_floor=<float>           transmission lower bound (default=0.10, 0.01 - 0.5)
+      atm_light=<float>         atmospheric light (default=0.95, 0.1 - 1.0)
 
    --vpp-hqdering [<param1>=<value>][,<param2>=<value>][...]
      DCT ringing reduction filter. Applies correction to luma and copies chroma unchanged.
@@ -1555,6 +1669,9 @@ Basic Encoding Options:
       contrast=<float>          (default=1.0, -2.0 - 2.0)
       gamma=<float>             (default=1.0,  0.1 - 10.0)
       saturation=<float>        (default=1.0,  0.0 - 3.0)
+      vibrance=<float>          (default=0.0, -1.0 - 2.0)
+                                  adjusts low-saturation colors more strongly
+                                  while preserving highly saturated colors.
       hue=<float>               (default=0.0, -180 - 180)
       coring=<bool>             clamp output to TV range (default=off)
       start_hue=<float>         limit hue/saturation to a hue range
@@ -1571,12 +1688,6 @@ Basic Encoding Options:
       flip_x=<bool>
       flip_y=<bool>
       transpose=<bool>
-
-   --vpp-lenscorrection [<param1>=<value>][,<param2>=<value>][...]
-      k1=<float>, k2=<float>     radial distortion coefficients
-      cx=<float>, cy=<float>     correction centre (default=0.5,0.5)
-   --vpp-v360 [<param1>=<value>][,<param2>=<value>][...]
-      in/out=equirect|flat|cubemap, yaw/pitch/roll=<float>, h_fov=<float>, w/h=<int>
 
    --vpp-deband [<param1>=<value>][,<param2>=<value>][...]
      enable deband filter.
