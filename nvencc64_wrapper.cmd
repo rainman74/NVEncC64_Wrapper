@@ -378,7 +378,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
             %DBG% FILTER_HAS_RESIZE = "!FILTER_HAS_RESIZE!"
             %DBG% RESIZE_PARAM      = "!RESIZE_PARAM!"
 
-            nvencc64.exe !NV_FLAGS! --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "!INFILE!" -c !ENCODER! --profile !PROFILE! --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\!INBASE!.mkv"
+            nvencc64.exe !NV_FLAGS! --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "!INFILE!" --video-track 1 -c !ENCODER! --profile !PROFILE! --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\!INBASE!.mkv"
             if errorlevel 1 exit /b !ERRORLEVEL!
 
             if exist "_Converted\!INBASE!.mkv" (
