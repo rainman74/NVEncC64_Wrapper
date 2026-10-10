@@ -9,9 +9,10 @@ Batch-Videotranscoding-Wrapper für [NVEncC64](https://github.com/rigaya/NVEnc) 
 - **Auto-Skip** — Bereits im Zielcodec vorliegende Dateien werden ohne Neukodierung verschoben
 - **Audio-Encoding** — AC3, AAC, E-AC3 oder direkte Kopie (auch selektive Streams)
 - **VPP-Filter** — Denoise, Sharpening, Super-Resolution, VSR, Deinterlacing, HDR→SDR u.v.m.
+- **AviSynth** — `*.avs`-Skripte werden ohne Codec-Erkennung direkt über den AviSynth-Reader (`--avs`) kodiert
 - **Tag-Bereinigung** — Automatische MKV-Metadaten-Normalisierung via `mkvpropedit`
-- **Fehlerbehandlung** — Nicht analysierbare Dateien landen in `_Check/` zur manuellen Prüfung
-- **Debug-Modus** — Detaillierte Ausgabe des Auto-Crop-Prozesses via `DEBUG_AUTOCROP=1`
+- **Fehlerbehandlung** — Nicht analysierbare Dateien (außer `*.avs`) landen in `_Check/` zur manuellen Prüfung
+- **Debug-Modus** — Detaillierte Ausgabe (Auto-Crop, Parameter, Zwischenergebnisse) via `set "DEBUG=1"` in der Wrapper-Datei
 
 ## Voraussetzungen
 
@@ -23,6 +24,12 @@ mediainfo.exe
 nvencc64.exe
 mkvpropedit.exe / mkvmerge.exe
 ```
+
+## Eingabeformate
+
+Im Arbeitsverzeichnis werden `*.mkv`, `*.mp4`, `*.mpg`, `*.mov`, `*.avi`, `*.webm` und `*.avs` verarbeitet; die Ausgabe landet als `_Converted\<Dateiname>.mkv`.
+
+**AviSynth (`*.avs`):** Bei Skripten entfällt die mediainfo-Codec-Erkennung. Es wird immer der AviSynth-Reader (`--avs`) verwendet – unabhängig vom `decoder`-Parameter – und der `chkenc`-Check wird übersprungen. Schlägt bei `crop=auto` die Probe fehl (z. B. weil ffmpeg das Skript nicht öffnen kann), wird ohne Auto-Crop weiterkodiert; das Skript wird **nicht** nach `_Check` verschoben.
 
 ## Aufruf
 
@@ -56,6 +63,7 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 |------|-----------|
 | `ac3` (default) | AC3, Stereo → 192k, 5.1 → 384k, 7.1 → 5.1 Downmix |
 | `aac` | AAC, Stereo → 128k, 5.1 → 256k |
+| `aacs` | AAC, alle Streams auf Stereo downmixen (128k) |
 | `eac3` | E-AC3, Stereo → 320k, 5.1 → 640k |
 | `copy` | Alle Audiostreams unverändert kopieren |
 | `copy1` | Nur Stream 1 kopieren |
@@ -67,11 +75,13 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 | Wert | HEVC QVBR | H.264 QVBR | Tuning | Multipass |
 |------|-----------|------------|--------|-----------|
 | `uhq` | 24 | 20 | uhq / hq | 2pass-full |
-| `hq` | 26 | 22 | hq | 2pass-full |
-| `def` (default) | 28 | 24 | hq | 2pass-quarter |
+| `hq` | 26 | 22 | hq | 2pass-quarter |
+| `def` (default) | 28 | 24 | hq | none |
 | `lq` | 30 | 26 | lowlatency | none |
 | `ulq` | 32 | 28 | ultralowlatency | none |
 | `auto` | auto | auto | Automatisch anhand Jahr im Dateinamen: `(19xx)` → hq, `(20xx)` → def, sonst def |
+
+> AV1 verwendet dieselben Stufen wie HEVC.
 
 #### crop (Position 4)
 **Automatisch:**
@@ -81,23 +91,26 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 | `none` | Kein Crop |
 
 **Vertikaler Crop (schwarze Balken oben/unten entfernen, Zielbreite 1920):**
-`696`, `768`, `800`, `804`, `808`, `812`, `816`, `872`, `960`, `1012`, `1024`, `1036`, `1040`
+`696`, `752`, `768`, `800`, `804`, `808`, `812`, `816`, `872`, `960`, `1012`, `1024`, `1036`, `1040`
 
 **Resolutionen (kein aktiver Crop, nur Skalierung):**
 | Wert | Auflösung |
 |------|-----------|
+| `43` | 720x540 (fest, 4:3-Downscale) |
+| `169` | 960x540 (fest, 16:9-Downscale) |
 | `720` | 1280x-2 (Breite fix) |
 | `720p` | -2x720 (Höhe fix) |
 | `720f` | 1280x720 (fest) |
 | `1080` | 1920x-2 (Breite fix) |
 | `1080p` | -2x1080 (Höhe fix) |
 | `1080f` | 1920x1080 (fest) |
+| `1440f` | 1440x1080 (fest) |
 | `2160` | 3840x-2 (Breite fix) |
 | `2160p` | -2x2160 (Höhe fix) |
 | `2160f` | 3840x2160 (fest) |
 
 **Letterbox-Standards (1920x1080 Basis mit horizontalem Crop):**
-`1440`, `1348`, `1420`, `1480`, `1500`, `1764`, `1780`, `1788`, `1792`, `1800`
+`1348`, `1408`, `1420`, `1440`, `1480`, `1500`, `1620`, `1764`, `1780`, `1788`, `1792`, `1800`
 
 **Aliase (alle = kein Crop):** `c1`, `c2`, `c3`, `c4`, `c5`, `c6`
 
@@ -109,7 +122,7 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 | `smooth` | Motion-Smoothing (`--vpp-msmooth`) |
 | `nlmeans` | Rauschreduzierung (`--vpp-nlmeans` + Unsharp) |
 | `gauss` | Weichzeichner Gauss 3px |
-| `gauss5` | Weichzeichner Gauss 5px |
+| `bm3d` | BM3D-Denoise (`--vpp-bm3d`) |
 | `sharp` | Schärfung (`--vpp-msharpen`) |
 | `denoise` | NVIDIA Webcam-Denoise (leicht) |
 | `denoiseHQ` | NVIDIA Webcam-Denoise (stark) |
@@ -198,8 +211,10 @@ Nach der Kodierung werden automatisch MKV-Metadaten via `mkvpropedit` normalisie
 
 ## Debug-Modus
 
+In `nvencc64_wrapper.cmd` (INIT-Bereich) umstellen:
+
 ```cmd
-set "DEBUG_AUTOCROP=1"
+set "DEBUG=1"
 ```
 
 Aktiviert detaillierte Ausgabe der Crop-Erkennung, NVEnc-Parameter und Zwischenergebnisse.
@@ -207,14 +222,14 @@ Aktiviert detaillierte Ausgabe der Crop-Erkennung, NVEnc-Parameter und Zwischene
 ## Arbeitsablauf
 
 1. Alle Videodateien im aktuellen Ordner werden nacheinander verarbeitet
-2. Pro Datei: Codec-Prüfung → ggf. Auto-Crop → Encoding nach `_Converted/<name>.mkv`
+2. Pro Datei: Codec-Prüfung (bei `*.avs` entfällt sie) → ggf. Auto-Crop → Encoding nach `_Converted/<name>.mkv`
 3. Nach Encoding: 5s Pause, dann nächste Datei
 4. Am Ende: Anzeige der Speicherersparnis (komprimierte vs. originale Größe)
 
 ## Fehlerbehandlung
 
-- **Unbekannter Codec** → Datei wird nach `_Check/` verschoben
-- **Crop-Probe fehlgeschlagen** → Datei wird nach `_Check/` verschoben
+- **Unbekannter Codec** → Datei wird nach `_Check/` verschoben (nicht bei `*.avs` – dort entfällt die Codec-Erkennung)
+- **Crop-Probe fehlgeschlagen** → Datei wird nach `_Check/` verschoben (bei `*.avs`: Warnung, Weiterkodierung ohne Crop)
 - **Asymmetrische schwarze Balken** → Datei wird nach `_Check/` verschoben
 - **Quelle zu klein** (< 1280×696) → Datei wird nach `_Check/` verschoben
 - **Tag-Edit fehlgeschlagen** → Datei wird nach `_Check/` verschoben

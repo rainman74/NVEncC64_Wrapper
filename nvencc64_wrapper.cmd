@@ -237,7 +237,7 @@ exit /b
 call :ENSURE_DIR "_Converted"
 set "FOUND=0"
 setlocal DisableDelayedExpansion
-for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist "_Converted\%%~nI.mkv" (
+for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist "_Converted\%%~nI.mkv" (
     echo %ESC%[101;93m %%I %ESC%[0m
 
     set "FOUND=1"
@@ -256,20 +256,28 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 
     setlocal EnableDelayedExpansion
 
-    for /f "usebackq delims=" %%C in (`mediainfo "--Inform=Video;%%Format%%" "!INFILE!"`) do (
-        set "SRC_CODEC=%%C"
-    )
+    set "IS_AVS=0"
+    if /i "%%~xI"==".avs" set "IS_AVS=1"
 
-    if not defined SRC_CODEC (
-        echo ERROR: Could not detect codec. Moving file to _Check.
-        call :ENSURE_DIR "_Check"
-        move /Y "!INFILE!" "_Check\" >nul
-        set "SKIP_FILE=1"
+    if "!IS_AVS!"=="1" (
+        set "SRC_CODEC=AVS"
+        set "DECODER_PARAM=--avs"
     ) else (
-        if "%CHECK_ENCODED%"=="1" (
-            if /i "!SRC_CODEC!"=="HEVC" if /i "%ENCODER%"=="hevc" set "TARGET_DIR=_Converted"
-            if /i "!SRC_CODEC!"=="AVC"  if /i "%ENCODER%"=="h264" set "TARGET_DIR=_Converted"
-            if /i "!SRC_CODEC!"=="AV1"  if /i "%ENCODER%"=="av1"  set "TARGET_DIR=_Converted"
+        for /f "usebackq delims=" %%C in (`mediainfo "--Inform=Video;%%Format%%" "!INFILE!"`) do (
+            set "SRC_CODEC=%%C"
+        )
+
+        if not defined SRC_CODEC (
+            echo ERROR: Could not detect codec. Moving file to _Check.
+            call :ENSURE_DIR "_Check"
+            move /Y "!INFILE!" "_Check\" >nul
+            set "SKIP_FILE=1"
+        ) else (
+            if "%CHECK_ENCODED%"=="1" (
+                if /i "!SRC_CODEC!"=="HEVC" if /i "%ENCODER%"=="hevc" set "TARGET_DIR=_Converted"
+                if /i "!SRC_CODEC!"=="AVC"  if /i "%ENCODER%"=="h264" set "TARGET_DIR=_Converted"
+                if /i "!SRC_CODEC!"=="AV1"  if /i "%ENCODER%"=="av1"  set "TARGET_DIR=_Converted"
+            )
         )
     )
 
@@ -327,11 +335,16 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
             %DBG% RUN_PROBE is being executed
             call :RUN_PROBE "!INFILE!"
             if "!PROBE_OK!"=="0" (
-                %DBG% RUN_PROBE failed, moving file to _Check
-                echo %ESC%[91mWARNING: Probe failed or source too small. Moving file to _Check.%ESC%[0m
-                call :ENSURE_DIR "_Check"
-                move /Y "!INFILE!" "_Check\" >nul
-                set "SKIP_FILE=1"
+                if "!IS_AVS!"=="1" (
+                    %DBG% RUN_PROBE failed for AviSynth script, continuing without crop
+                    echo %ESC%[91mWARNING: Probe failed for AviSynth script - continuing without auto-crop.%ESC%[0m
+                ) else (
+                    %DBG% RUN_PROBE failed, moving file to _Check
+                    echo %ESC%[91mWARNING: Probe failed or source too small. Moving file to _Check.%ESC%[0m
+                    call :ENSURE_DIR "_Check"
+                    move /Y "!INFILE!" "_Check\" >nul
+                    set "SKIP_FILE=1"
+                )
             ) else (
                 if "!AUTO_CROP!"=="0:0:0:0" (
                     %DBG% AUTO-CROP: no crop detected, passthrough
@@ -360,7 +373,7 @@ for %%I in (*.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist
 
         powershell -command "write-output ('file:///' + (get-item '!INDIR!').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace [char]33, '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
 
-        mediainfo --Inform="General;%%Duration/String2%% - %%FileSize/String4%%" "!INFILE!"
+        if "!IS_AVS!"=="0" mediainfo --Inform="General;%%Duration/String2%% - %%FileSize/String4%%" "!INFILE!"
 
         %DBG% NVEnc parameters:
         %DBG%   CROP   = "!CROP!"
