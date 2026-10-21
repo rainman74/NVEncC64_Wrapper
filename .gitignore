@@ -1,0 +1,6 @@
+# Private helper scripts - never commit
+.___CLAUDE___.cmd
+.___PUSH___.cmd
+
+# Backup folders - ignored at every depth, never commit
+.backup/
