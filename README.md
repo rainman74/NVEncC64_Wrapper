@@ -142,7 +142,8 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 | `deHalo` | Feines Dehalo (`--vpp-finedehalo rx=3.0,ry=3.0`) |
 | `deHalo2` | Feines Dehalo (`--vpp-finedehalo rx=2.0,ry=2.0`) |
 | `log` | Schreibt Input-Packet-Log (`--log-packets`) |
-| `f1`–`f6` | Aliase = kein Filter |
+| `f1` | Schneidet den Anfang ab — Encoding erst ab 30,989 s (`--seek 00:00:30.989`) |
+| `f2`–`f6` | Aliase = kein Filter |
 
 #### mode (Position 6)
 | Wert | Effekt |

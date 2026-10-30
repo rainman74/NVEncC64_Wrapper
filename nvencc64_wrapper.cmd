@@ -179,7 +179,7 @@ if /i "%5"=="vsrStreamHQ"           (set "FILTER=--vpp-resize algo=ngx-vsr,vsr-q
 if /i "%5"=="deHalo"                (set "FILTER=--vpp-finedehalo rx=3.0,ry=3.0")
 if /i "%5"=="deHalo2"               (set "FILTER=--vpp-finedehalo rx=2.0,ry=2.0")
 if /i "%5"=="log"                   (set "FILTER=--log-packets input_packets.log")
-if /i "%5"=="f1"                    (set "FILTER=")
+if /i "%5"=="f1"                    (set "FILTER=--seek 00:00:30.989")
 if /i "%5"=="f2"                    (set "FILTER=")
 if /i "%5"=="f3"                    (set "FILTER=")
 if /i "%5"=="f4"                    (set "FILTER=")
