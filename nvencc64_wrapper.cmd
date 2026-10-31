@@ -15,39 +15,34 @@ set "EDIT_TAGS=1"
 set "DEBUG=0"
 if "%DEBUG%"=="1" (set "DBG=call :DEBUG") else (set "DBG=call :NOP")
 
-REM Argumente in Variablen spiegeln: cmd.exe splittet Argumente an "=".
-REM "seek=00:00:30.989" kommt daher als zwei Argumente an (seek + Wert)
-REM und wird hier wieder zu einem Argument zusammengesetzt.
-set "ARG1=%~1" & set "ARG2=%~2" & set "ARG3=%~3" & set "ARG4=%~4"
-set "ARG5=%~5" & set "ARG6=%~6" & set "ARG7=%~7" & set "ARG8=%~8" & set "ARG9=%~9"
-if /i not "!ARG5!"=="seek" goto :ARGS_READY
-if "!ARG6!"=="" goto :ARGS_READY
-set "ARG5=seek=!ARG6!"
-set "ARG6=!ARG7!"
-set "ARG7=!ARG8!"
-set "ARG8=!ARG9!"
-set "ARG9="
-:ARGS_READY
+set "SEEK_ARG=%~9"
+if /i "!SEEK_ARG!"=="seek" (
+    call :GET_ARG10 %*
+    set "SEEK_ARG=seek=!ARG10!"
+)
 
-call :VALIDATE-PARAMS "%ARG1%" "%ARG2%" "%ARG3%" "%ARG4%" "%ARG5%" "%ARG6%" "%ARG7%" "%ARG8%"
+call :VALIDATE-PARAMS %1 %2 %3 %4 %5 %6 %7 %8
 if "!PARAM_ERR!"=="1" goto :END
 
-call :SETENCODER %ARG1% %ARG2% %ARG3% %ARG4% %ARG5% %ARG6% %ARG7% %ARG8%
-call :SETAUDIO   %ARG1% %ARG2% %ARG3% %ARG4% %ARG5% %ARG6% %ARG7% %ARG8%
-call :SETCROP    %ARG1% %ARG2% %ARG3% %ARG4% %ARG5% %ARG6% %ARG7% %ARG8%
-call :SETFILTER  %ARG1% %ARG2% %ARG3% %ARG4% %ARG5% %ARG6% %ARG7% %ARG8%
+call :SETENCODER %1 %2 %3 %4 %5 %6 %7 %8
+call :SETAUDIO   %1 %2 %3 %4 %5 %6 %7 %8
+call :SETCROP    %1 %2 %3 %4 %5 %6 %7 %8
+call :SETFILTER  %1 %2 %3 %4 %5 %6 %7 %8
 set "FILTER_HAS_RESIZE=0"
 if defined FILTER (
     echo(!FILTER! | findstr /i /c:"--vpp-resize" >nul && set "FILTER_HAS_RESIZE=1"
 )
-call :SETMODE    %ARG1% %ARG2% %ARG3% %ARG4% "%ARG5%" %ARG6% %ARG7% %ARG8%
+call :SETMODE    %1 %2 %3 %4 %5 %6 %7 %8
 if defined MODE (
     echo(!MODE! | findstr /i /c:"--vpp-resize" >nul && set "FILTER_HAS_RESIZE=1"
 )
-call :SETDECODER %ARG1% %ARG2% %ARG3% %ARG4% "%ARG5%" %ARG6% %ARG7% %ARG8%
-call :SETCHKENC  %ARG1% %ARG2% %ARG3% %ARG4% "%ARG5%" %ARG6% %ARG7% %ARG8%
+call :SETDECODER %1 %2 %3 %4 %5 %6 %7 %8
+call :SETCHKENC  %1 %2 %3 %4 %5 %6 %7 %8
 set "DECODER_PARAM="
 if defined DECODER set "DECODER_PARAM=--%DECODER%"
+
+set "SEEK_PARAM="
+if /i "!SEEK_ARG:~0,5!"=="seek=" set "SEEK_PARAM=--seek !SEEK_ARG:~5!"
 
 set "REQ_Q=%3"
 if /i "!REQ_Q!"=="" set "REQ_Q=def"
@@ -168,9 +163,6 @@ exit /b
 
 :SETFILTER
 set "FILTER="
-set "SEEK_TIME="
-if /i "!ARG5:~0,5!"=="seek=" set "SEEK_TIME=!ARG5:~5!"
-if defined SEEK_TIME set "FILTER=--seek !SEEK_TIME!"
 if /i "%5"=="none"                  (set "FILTER=")
 if /i "%5"=="edgelevel"             (set "FILTER=--vpp-edgelevel --vpp-detailsharpen")
 if /i "%5"=="smooth"                (set "FILTER=--vpp-msmooth")
@@ -397,6 +389,7 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
         %DBG%   CROP   = "!CROP!"
         %DBG%   FILTER = "!FILTER!"
         %DBG%   MODE   = "!MODE!"
+        %DBG%   SEEK   = "!SEEK_PARAM!"
         %DBG%   AUDIO  = "!AUDIO!"
 
         if not defined SKIP_FILE (
@@ -409,7 +402,7 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
             %DBG% FILTER_HAS_RESIZE = "!FILTER_HAS_RESIZE!"
             %DBG% RESIZE_PARAM      = "!RESIZE_PARAM!"
 
-            nvencc64.exe !NV_FLAGS! --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "!INFILE!" --video-track 1 -c !ENCODER! --profile !PROFILE! --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !AUDIO! --sub-copy --chapter-copy -o "_Converted\!INBASE!.mkv"
+            nvencc64.exe !NV_FLAGS! --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "!INFILE!" --video-track 1 -c !ENCODER! --profile !PROFILE! --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !SEEK_PARAM! !AUDIO! --sub-copy --chapter-copy -o "_Converted\!INBASE!.mkv"
             if errorlevel 1 exit /b !ERRORLEVEL!
 
             if exist "_Converted\!INBASE!.mkv" (
@@ -445,39 +438,57 @@ if "!VALID!"=="0" (
 exit /b
 
 :VALIDATE_SEEK
-REM Parameter-Filter seek=<hh:mm:ss.ms> - Wert per PowerShell-Regex pruefen
+REM Optionaler 9. Parameter seek=<hh:mm:ss.ms> - Wert per PowerShell-Regex pruefen
 set "SEEK_RAW=%~1"
-if /i "!SEEK_RAW!"=="seek" (
-    set "ERR_MSG=Missing value for filter 'seek' at position 5. Use seek=<hh:mm:ss.ms>, e.g. seek=00:00:30.989"
-    goto :PARAM_ERROR
-)
 set "SEEK_VAL=!SEEK_RAW:~5!"
-set "SEEK_CHECK=ERR"
-if defined SEEK_VAL for /f "usebackq delims=" %%S in (`powershell -NoProfile -Command "if ('!SEEK_VAL!' -match '^(?:[0-9]+:)?(?:[0-9]+:)?[0-9]+(?:\.[0-9]+)?$') { 'OK' } else { 'ERR' }"`) do set "SEEK_CHECK=%%S"
-if not "!SEEK_CHECK!"=="OK" (
-    set "ERR_MSG=Invalid seek value '%~1' at position 5. Use seek=<hh:mm:ss.ms>, e.g. seek=00:00:30.989"
+if not defined SEEK_VAL (
+    set "ERR_MSG=Missing value for seek at position 9. Use seek=<hh:mm:ss.ms>, e.g. seek=00:00:30.989"
     goto :PARAM_ERROR
 )
+set "SEEK_CHECK=ERR"
+for /f "usebackq delims=" %%S in (`powershell -NoProfile -Command "if ('!SEEK_VAL!' -match '^(?:[0-9]+:)?(?:[0-9]+:)?[0-9]+(?:\.[0-9]+)?$') { 'OK' } else { 'ERR' }"`) do set "SEEK_CHECK=%%S"
+if not "!SEEK_CHECK!"=="OK" (
+    set "ERR_MSG=Invalid seek value '%~1' at position 9. Use seek=<hh:mm:ss.ms>, e.g. seek=00:00:30.989"
+    goto :PARAM_ERROR
+)
+exit /b
+
+:GET_ARG10
+set "ARG10="
+shift
+shift
+shift
+shift
+shift
+shift
+shift
+shift
+shift
+set "ARG10=%~1"
 exit /b
 
 :VALIDATE-PARAMS
 set "PARAM_ERR=0"
 
-call :VALIDATE_ONE "!ARG1!" TOK_ENCODER encoder 1
-call :VALIDATE_ONE "!ARG2!" TOK_AUDIO   audio   2
-call :VALIDATE_ONE "!ARG3!" TOK_QUALITY quality 3
-call :VALIDATE_ONE "!ARG4!" TOK_CROP    crop    4
-set "FILTER_IS_SEEK=0"
-if /i "!ARG5!"=="seek" set "FILTER_IS_SEEK=1"
-if /i "!ARG5:~0,5!"=="seek=" set "FILTER_IS_SEEK=1"
-if "!FILTER_IS_SEEK!"=="1" (
-    call :VALIDATE_SEEK "!ARG5!"
-) else (
-    call :VALIDATE_ONE "!ARG5!" TOK_FILTER  filter  5
+call :VALIDATE_ONE "%1" TOK_ENCODER encoder 1
+call :VALIDATE_ONE "%2" TOK_AUDIO   audio   2
+call :VALIDATE_ONE "%3" TOK_QUALITY quality 3
+call :VALIDATE_ONE "%4" TOK_CROP    crop    4
+call :VALIDATE_ONE "%5" TOK_FILTER  filter  5
+call :VALIDATE_ONE "%6" TOK_MODE    mode    6
+call :VALIDATE_ONE "%7" TOK_DECODER decoder 7
+call :VALIDATE_ONE "%8" TOK_CHKENC  chkenc  8
+if defined SEEK_ARG (
+    set "SEEK_ARG_OK=0"
+    if /i "!SEEK_ARG!"=="seek" set "SEEK_ARG_OK=1"
+    if /i "!SEEK_ARG:~0,5!"=="seek=" set "SEEK_ARG_OK=1"
+    if "!SEEK_ARG_OK!"=="1" (
+        call :VALIDATE_SEEK "!SEEK_ARG!"
+    ) else (
+        set "ERR_MSG=Invalid argument '!SEEK_ARG!' at position 9. Use seek=<hh:mm:ss.ms>, e.g. seek=00:00:30.989"
+        goto :PARAM_ERROR
+    )
 )
-call :VALIDATE_ONE "!ARG6!" TOK_MODE    mode    6
-call :VALIDATE_ONE "!ARG7!" TOK_DECODER decoder 7
-call :VALIDATE_ONE "!ARG8!" TOK_CHKENC  chkenc  8
 
 exit /b
 
@@ -715,30 +726,40 @@ set "LINE=!LEFT!["
 set FIRST=1
 set WRAP=115
 
-for %%T in (!%TOKVAR%!) do (
-    if "!FIRST!"=="1" (
-        set FIRST=0
-        set "LINE=!LINE!%%T"
+REM Tokenliste an Leerzeichen splitten (nicht an "=", sonst wird z.B.
+REM "seek=<hh:mm:ss.ms>" zerlegt - der FOR-Befehl behandelt "=" als Trenner).
+set "REST=!%TOKVAR%!"
+:PRINT_TOK_LOOP
+if not defined REST goto :PRINT_TOK_DONE
+for /f "tokens=1,* delims= " %%A in ("!REST!") do (
+    set "TOKTXT=%%A"
+    set "REST=%%B"
+)
+if "!FIRST!"=="1" (
+    set FIRST=0
+    set "LINE=!LINE!!TOKTXT!"
+) else (
+    set "TEST=!LINE!|!TOKTXT!"
+    if not "!TEST:~0,%WRAP%!"=="!TEST!" (
+        echo !LINE!]
+        set "LINE=!INDENT! [!TOKTXT!"
     ) else (
-        set "TEST=!LINE!|%%T"
-        if not "!TEST:~0,%WRAP%!"=="!TEST!" (
-            echo !LINE!]
-            set "LINE=!INDENT! [%%T"
-        ) else (
-            set "LINE=!LINE!|%%T"
-        )
+        set "LINE=!LINE!|!TOKTXT!"
     )
 )
-
+goto :PRINT_TOK_LOOP
+:PRINT_TOK_DONE
 echo !LINE!]
 endlocal & exit /b
 
 :USAGE
 setlocal EnableDelayedExpansion
 cls
-set "USAGE_PARAMS=^<encoder^> [audio=ac3] [quality=28] [crop=none] [filter=none] [mode=none] [decoder=hw] [chkenc=true]"
+set "USAGE_PARAMS=^<encoder^> [audio] [quality] [crop] [filter] [mode] [decoder] [chkenc] [seek=^<hh:mm:ss.ms^>]"
 set "EXAMPLE_PARAMS=hevc ac3 auto auto none none hw false"
 set "EXAMPLE_PARAMS2=hevc ac3 auto none deHalo rtgmc"
+set "EXAMPLE_PARAMS3=hevc ac3 auto 1036"
+set "EXAMPLE_PARAMS4=hevc ac3 auto auto none none hw false seek=00:00:30.989"
 if defined CALLER_NAME (
     set "COMMAND=%CALLER_NAME%"
 ) else (
@@ -754,8 +775,7 @@ call :PRINT_TOK "filter"  "(def=none)"  TOK_FILTER
 call :PRINT_TOK "mode"    "(def=none)"  TOK_MODE
 call :PRINT_TOK "decoder" "(def=hw)"    TOK_DECODER
 call :PRINT_TOK "chkenc"  "(def=true)"  TOK_CHKENC
-echo.
-echo Filter-Parameter: seek=^<hh:mm:ss.ms^>  ^(z.B. seek=00:00:30.989^) - schneidet den Anfang ab.
+call :PRINT_TOK "seek"    "(optional)"  TOK_SEEK
 echo.
 echo Example: %COMMAND% ^| %UL%encoder%NO% ^| %UL%audio%NO%   ^| %UL%quality%NO% ^| %UL%crop%NO%    ^| %UL%filter%NO%  ^| %UL%mode%NO%    ^| %UL%decoder%NO% ^| %UL%chkenc%NO%  ^|
 echo Example: %COMMAND% ^| hevc    ^| ac3     ^|         ^|         ^|         ^|         ^|         ^|         ^|
@@ -766,6 +786,8 @@ echo Example: %COMMAND% ^| hevc    ^| ac3     ^| auto    ^| auto    ^| none    ^
 echo.
 echo Example: %COMMAND% %EXAMPLE_PARAMS%
 echo Example: %COMMAND% %EXAMPLE_PARAMS2%
+echo Example: %COMMAND% %EXAMPLE_PARAMS3%
+echo Example: %COMMAND% %EXAMPLE_PARAMS4%
 echo.
 endlocal
 goto :END
@@ -781,10 +803,12 @@ set "TOK_ENCODER=def hevc he10 h264 av1"
 set "TOK_AUDIO=copy copy1 copy2 copy12 copy23 ac3 aac aacs eac3"
 set "TOK_QUALITY=def auto hq uhq lq ulq"
 set "TOK_CROP=none auto 43 169 696 752 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1440f 1348 1408 1420 1480 1500 1620 1764 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
-set "TOK_FILTER=none edgelevel smooth nlmeans gauss bm3d sharp denoise denoiseHQ artifact artifactHQ vsr vsrArtifact vsrArtifactHQ vsrDenoise vsrDenoiseHQ vsrDeBlur vsrDeBlurHQ vsrDetailRestore vsrDetailRestoreHQ vsrStream vsrStreamHQ deHalo deHalo2 log vhsRestore f1 f2 f3 f4 f5 f6"
+set "TOK_FILTER=none edgelevel smooth nlmeans gauss bm3d sharp denoise denoiseHQ artifact artifactHQ vsr vsrArtifact vsrArtifactHQ vsrDenoise vsrDenoiseHQ vsrDeBlur vsrDeBlurHQ vsrDetailRestore vsrDetailRestoreHQ vsrStream vsrStreamHQ deHalo deHalo2 vhsRestore log f1 f2 f3 f4 f5 f6"
 set "TOK_MODE=none deint ivtc rtgmc rtgmcp double framegen framegen4 framegen8 framegenHQ 23fps 25fps 30fps 60fps 29fps 59fps lighter darker vintage linear tweak hdrToSDR hdrToSDRR hdrToSDRM hdrToSDRH dv dolby-vision"
 set "TOK_DECODER=def hw sw auto"
 set "TOK_CHKENC=def true false"
+REM TOK_SEEK nur fuer die Usage-Ausgabe - der Wert wird in :VALIDATE_SEEK geprueft
+set "TOK_SEEK=seek=<hh:mm:ss.ms>"
 exit /b
 
 :NOP

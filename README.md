@@ -10,7 +10,7 @@ Batch-Videotranscoding-Wrapper für [NVEncC64](https://github.com/rigaya/NVEnc) 
 - **Audio-Encoding** — AC3, AAC, E-AC3 oder direkte Kopie (auch selektive Streams)
 - **VPP-Filter** — Denoise, Sharpening, Super-Resolution, VSR, Deinterlacing, HDR→SDR u.v.m.
 - **VHS-Restore** — Feldreparatur + Deinterlacing für VHS-Captures (`vhsRestore`, ONNX-Modell PAL/SECAM)
-- **Startzeitpunkt** — Anfang abschneiden mit Parameter-Filter `seek=<hh:mm:ss.ms>`
+- **Startzeitpunkt** — Anfang abschneiden über optionalen 9. Parameter `seek=<hh:mm:ss.ms>`
 - **AviSynth** — `*.avs`-Skripte werden ohne Codec-Erkennung direkt über den AviSynth-Reader (`--avs`) kodiert
 - **Tag-Bereinigung** — Automatische MKV-Metadaten-Normalisierung via `mkvpropedit`
 - **Fehlerbehandlung** — Nicht analysierbare Dateien (außer `*.avs`) landen in `_Check/` zur manuellen Prüfung
@@ -36,7 +36,7 @@ Im Arbeitsverzeichnis werden `*.mkv`, `*.mp4`, `*.mpg`, `*.mov`, `*.avi`, `*.web
 ## Aufruf
 
 ```
-nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [chkenc]
+nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [chkenc] [seek=<hh:mm:ss.ms>]
 ```
 
 | Pos | Parameter | Default | Beschreibung |
@@ -49,6 +49,7 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 | 6 | **mode** | `none` | Spezialmodi (Deinterlace, FPS, HDR→SDR, Dolby Vision) |
 | 7 | **decoder** | `hw` | Hardware- oder Software-Decoder |
 | 8 | **chkenc** | `true` | Bereits kodierte Dateien erkennen |
+| 9 | **seek** | (optional) | Schneidet den Anfang ab: `seek=<hh:mm:ss.ms>` (z. B. `seek=00:00:30.989`) |
 
 ### Parameter-Details
 
@@ -145,10 +146,7 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 | `deHalo2` | Feines Dehalo (`--vpp-finedehalo rx=2.0,ry=2.0`) |
 | `log` | Schreibt Input-Packet-Log (`--log-packets`) |
 | `vhsRestore` | VHS-Bandrestaurierung (`--vpp-vhs-restore model=vhs_restore_pal,mode=bob,precision=fp32`) — Feldreparatur + GPU-Bwdif, verdoppelt die Framerate (bob), für interlaced VHS-Captures; nicht mit `--vpp-onnx-deint` kombinierbar |
-| `seek=<hh:mm:ss.ms>` | Schneidet den Anfang ab — Encoding erst ab dem Zeitpunkt, z. B. `seek=00:00:30.989` → `--seek 00:00:30.989` (Parameter-Filter, Format `[hh:]mm:ss[.ms]`) |
 | `f1`–`f6` | Aliase = kein Filter |
-
-> **`seek=…`**: Einziger Filter mit Parameter — Wert wird mit `=` angehängt und in `:VALIDATE_SEEK` gegen `[hh:]mm:ss[.ms]` geprüft (ungültige Werte brechen mit Fehlermeldung ab). cmd.exe splittet Argumente an `=`; der Wrapper setzt `seek` + Wert wieder zusammen, deshalb funktioniert `seek=00:00:30.989` ohne Quotes (mit `"seek=00:00:30.989"` ebenfalls). NVEncC `--seek` ist **keyframe-basiert**: Die Ausgabe beginnt am nächsten Keyframe nach der Zeit (bis zu eine GOP später); existiert danach kein Keyframe mehr, bricht NVEncC ab.
 
 > **`vhsRestore`**: nutzt das ONNX-Modell `vhs_restore_pal` aus `%CMDPATH%\bin\onnx_models\vhs_restore\` (`--vpp-onnx-model-dir` setzt der Wrapper bereits). `mode=bob` verdoppelt die Framerate (50p bei 25i-Quelle); `--vpp-vhs-restore` ist mit `--vpp-onnx-deint` nicht kombinierbar. Für SECAM-Bänder liegt `vhs_restore_secam.onnx` bereit — dann in der `:SETFILTER`-Zeile `model=vhs_restore_secam` setzen.
 
@@ -194,6 +192,16 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 |------|-----------|
 | `def` / `true` (default) | Prüft, ob Quelle bereits im Zielcodec vorliegt → überspringt Neukodierung |
 | `false` | Immer neu kodieren |
+
+#### seek (Position 9, optional)
+| Wert | Verhalten |
+|------|-----------|
+| (weggelassen) | Datei komplett encodieren |
+| `seek=<hh:mm:ss.ms>` | Anfang abschneiden: Encoding erst ab dem Zeitpunkt, z. B. `seek=00:00:30.989` → `--seek 00:00:30.989`. Format `[hh:]mm:ss[.ms]` (wird in `:VALIDATE_SEEK` geprüft) |
+
+- cmd.exe splittet Argumente an `=`; der Wrapper setzt `seek` + Wert wieder zusammen. Deshalb funktioniert `seek=00:00:30.989` ohne Quotes — `"seek=00:00:30.989"` ebenfalls.
+- NVEncC `--seek` ist **keyframe-basiert**: Die Ausgabe beginnt am nächsten Keyframe nach der Zeit (bis zu eine GOP später); existiert danach kein Keyframe mehr, bricht NVEncC ab.
+- Der Parameter wirkt auf alle Dateien des Laufs; ungültige Werte brechen mit Fehlermeldung ab, bevor encodiert wird.
 
 ## Auto-Crop im Detail
 
@@ -285,9 +293,9 @@ nvencc64_wrapper hevc copy hq none vhsRestore
 VHS-Capture restaurieren: Feldreparatur + Deinterlacing über ONNX-Modell (PAL), Ausgabe mit doppelter Framerate (bob).
 
 ```cmd
-nvencc64_wrapper hevc ac3 auto none seek=00:00:30.989 rtgmc
+nvencc64_wrapper hevc ac3 auto none rtgmc none hw true seek=00:00:30.989
 ```
-Anfang abschneiden (Encoding erst ab 30,989 s) + RTGMC-Deinterlacing.
+Anfang abschneiden (Encoding erst ab 30,989 s) + RTGMC-Deinterlacing — `seek=` steht als 9. Parameter am Ende.
 
 ## Täglicher Gebrauch
 
