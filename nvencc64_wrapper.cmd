@@ -406,7 +406,8 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
             %DBG% RESIZE_PARAM      = "!RESIZE_PARAM!"
 
             nvencc64.exe !NV_FLAGS! --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "!INFILE!" --video-track 1 -c !ENCODER! --profile !PROFILE! --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !SEEK_PARAM! !AUDIO! --sub-copy --chapter-copy -o "_Converted\!INBASE!.part.mkv"
-            if errorlevel 1 (
+            set "RC=!ERRORLEVEL!"
+            if not "!RC!"=="0" (
                 if exist "_Converted\!INBASE!.part.mkv" del /Q "_Converted\!INBASE!.part.mkv" >nul 2>&1
                 echo %ESC%[91mWARNING: Encoding failed or cancelled. Source not moved.%ESC%[0m
                 exit /b

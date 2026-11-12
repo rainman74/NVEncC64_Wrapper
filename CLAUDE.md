@@ -164,6 +164,7 @@ Bei CTRL+C während der Konvertierung bleiben keine unvollständigen Dateien unt
 
 - **Temp-Datei + Rename**: Ausgaben werden zuerst als `_Converted\<Name>.part.mkv` geschrieben und **erst nach Erfolg** auf `<Name>.mkv` umbenannt (Encode-Pfad in `nvencc64_wrapper`/`ffmpeg_wrapper`; ebenso der `mkvmerge`-Re-Mux im Check-Encoded-Block).
 - **Fehlerpfad**: Bei Encoder-Fehler/Abbruch wird die Teil-Ausgabe **gelöscht**, eine WARNUNG ausgegeben und die **Quelle bleibt stehen** (`WARNING: Encoding failed or cancelled. Source not moved.`). Kein `_Check`-Move.
+- **Exitcode-Auswertung**: Nicht mehr `if errorlevel 1`, sondern `set "RC=!ERRORLEVEL!"` + `if not "!RC!"=="0"` — damit wird **jeder** Code ≠ 0 als Fehler/Abbruch erkannt, auch der CTRL+C-Status `0xC000013A` (als `-1073741510`). Vorher wurde ein Abbruch mit negativem Exitcode übersehen (Teil-Datei wurde dann als final umbenannt).
 - **`_Check` bleibt** ausschließlich für echte **Vorprüf-Fehler**: „Could not detect codec", „Probe failed or source too small" (beide unverändert).
 - **Aufräumen beim Start**: `MAIN` löscht alte `_Converted\*.part.*`-Reste (Rest einer „Terminate batch job"-Beendigung).
 - **Betroffen**: `nvencc64_wrapper` (Encode + mkvmerge-Re-Mux), `ffmpeg_wrapper` (im FFmpeg_Wrapper-Repo), `ffmpeg_avs`, `ffmpeg_audio_converter`, `ffmpeg_video_converter`, `cube`, `clut`.
