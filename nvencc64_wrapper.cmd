@@ -245,6 +245,7 @@ exit /b
 
 :MAIN
 call :ENSURE_DIR "_Converted"
+if exist "_Converted\*.part.mkv" del /Q "_Converted\*.part.mkv" >nul 2>&1
 set "FOUND=0"
 setlocal DisableDelayedExpansion
 for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not exist "_Converted\%%~nI.mkv" (
@@ -304,8 +305,10 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
         if /i "x!INNAME:~-4!"=="x.mkv" (
             move /Y "!INFILE!" "!MOVED_FILE!" >nul
         ) else (
-            mkvmerge -o "!MOVED_FILE!" "!INFILE!" >nul 2>&1
-            if exist "!MOVED_FILE!" (
+            set "MOVED_PART=!MOVED_FILE!.part.mkv"
+            mkvmerge -o "!MOVED_PART!" "!INFILE!" >nul 2>&1
+            if exist "!MOVED_PART!" (
+                move /Y "!MOVED_PART!" "!MOVED_FILE!" >nul
                 if /i not "!INFILE!"=="!MOVED_FILE!" del /F "!INFILE!" >nul
             ) else (
                 echo %ESC%[91mWARNING: mkvmerge failed, falling back to plain move ^(file may be broken^).%ESC%[0m
@@ -402,8 +405,17 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
             %DBG% FILTER_HAS_RESIZE = "!FILTER_HAS_RESIZE!"
             %DBG% RESIZE_PARAM      = "!RESIZE_PARAM!"
 
-            nvencc64.exe !NV_FLAGS! --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "!INFILE!" --video-track 1 -c !ENCODER! --profile !PROFILE! --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !SEEK_PARAM! !AUDIO! --sub-copy --chapter-copy -o "_Converted\!INBASE!.mkv"
-            if errorlevel 1 exit /b !ERRORLEVEL!
+            nvencc64.exe !NV_FLAGS! --thread-priority all=lowest --input-thread 1 --output-buf 16 !DECODER_PARAM! -i "!INFILE!" --video-track 1 -c !ENCODER! --profile !PROFILE! --tier high --level auto --qvbr !QUALITY! !PRESET! --aq --aq-temporal --aq-strength 10 --lookahead 24 !TUNING! !B_REF! --bref-mode middle !RESIZE_PARAM! !CROP! !FILTER! !MODE! !SEEK_PARAM! !AUDIO! --sub-copy --chapter-copy -o "_Converted\!INBASE!.part.mkv"
+            if errorlevel 1 (
+                if exist "_Converted\!INBASE!.part.mkv" del /Q "_Converted\!INBASE!.part.mkv" >nul 2>&1
+                echo %ESC%[91mWARNING: Encoding failed or cancelled. Source not moved.%ESC%[0m
+                exit /b
+            )
+            if not exist "_Converted\!INBASE!.part.mkv" (
+                echo %ESC%[91mWARNING: No output file.%ESC%[0m
+                exit /b
+            )
+            move /Y "_Converted\!INBASE!.part.mkv" "_Converted\!INBASE!.mkv" >nul
 
             if exist "_Converted\!INBASE!.mkv" (
                 if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "_Converted\!INBASE!.mkv"

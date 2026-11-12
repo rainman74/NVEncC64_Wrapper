@@ -157,3 +157,13 @@ Bei Änderungen oder Erweiterungen an `nvencc64_wrapper.cmd` **oder** `ffmpeg_wr
 - **README.md** erweitert: neuer Abschnitt „Hilfsskripte im `bin`" (encode-all, move-all inkl. Serien-Heuristik/`.checked`-Wegfall, clean-all inkl. `:ProcessCopy`-Warnung), Features-Bullet „Hilfsskripte", Arbeitsablauf-Punkt 4 (Savings) präzisiert; Hinweis auf entfernte Pipeline/Lean-Meldungen.
 - **Repo vs. `bin`**: Das Repo enthält die sanitisierte Version von `nvencc64_wrapper.cmd`. **Custom Crops und Filter (`cX`/`fX`) sind nicht zu beachten** — private Token-Werte im `bin` (`smooth`, `nlmeans`, `f1`–`f3` mit eigenen `--vpp-*`-Ketten, z. B. realesrgan/msmooth/chromashift) sind nur temporär, jederzeit zurücksetzbar und werden nicht benötigt. `.___PUSH___.cmd` überschreibt `bin` direkt; kein Sichern/Zurückspielen.
 - **Deployment**: `.___PUSH___.cmd` aus dem Repo-Root (xcopy `*.cmd` → `%CMDPATH%\bin`, `git add .`, Commit „Updates", `git push`). `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd` sind von der Kopie ausgeschlossen.
+
+## Abbruch-/CTRL+C-Sicherheit (Stand 2026-11-13)
+
+Bei CTRL+C während der Konvertierung bleiben keine unvollständigen Dateien unter dem finalen Namen liegen und die Quelle wird nicht mehr nach `_Check` verschoben:
+
+- **Temp-Datei + Rename**: Ausgaben werden zuerst als `_Converted\<Name>.part.mkv` geschrieben und **erst nach Erfolg** auf `<Name>.mkv` umbenannt (Encode-Pfad in `nvencc64_wrapper`/`ffmpeg_wrapper`; ebenso der `mkvmerge`-Re-Mux im Check-Encoded-Block).
+- **Fehlerpfad**: Bei Encoder-Fehler/Abbruch wird die Teil-Ausgabe **gelöscht**, eine WARNUNG ausgegeben und die **Quelle bleibt stehen** (`WARNING: Encoding failed or cancelled. Source not moved.`). Kein `_Check`-Move.
+- **`_Check` bleibt** ausschließlich für echte **Vorprüf-Fehler**: „Could not detect codec", „Probe failed or source too small" (beide unverändert).
+- **Aufräumen beim Start**: `MAIN` löscht alte `_Converted\*.part.*`-Reste (Rest einer „Terminate batch job"-Beendigung).
+- **Betroffen**: `nvencc64_wrapper` (Encode + mkvmerge-Re-Mux), `ffmpeg_wrapper` (im FFmpeg_Wrapper-Repo), `ffmpeg_avs`, `ffmpeg_audio_converter`, `ffmpeg_video_converter`, `cube`, `clut`.
