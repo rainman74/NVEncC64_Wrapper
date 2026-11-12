@@ -168,3 +168,13 @@ Bei CTRL+C während der Konvertierung bleiben keine unvollständigen Dateien unt
 - **`_Check` bleibt** ausschließlich für echte **Vorprüf-Fehler**: „Could not detect codec", „Probe failed or source too small" (beide unverändert).
 - **Aufräumen beim Start**: `MAIN` löscht alte `_Converted\*.part.*`-Reste (Rest einer „Terminate batch job"-Beendigung).
 - **Betroffen**: `nvencc64_wrapper` (Encode + mkvmerge-Re-Mux), `ffmpeg_wrapper` (im FFmpeg_Wrapper-Repo), `ffmpeg_avs`, `ffmpeg_audio_converter`, `ffmpeg_video_converter`, `cube`, `clut`.
+
+## Rollback: Version ohne Part-Handling
+
+- **Part-Handling eingeführt**: Commit **`d6f8c09`** (Temp-Datei `.part.mkv` + Rename, Fehlerpfad ohne `_Check`-Move); Exitcode-Auswertung (`RC=!ERRORLEVEL!`) danach in **`b094e22`**. Spätere Commits `c97b30f`/`f0b5fb9` betreffen nur `nvencc64.txt` (Restore/Löschung).
+- **Letzter Stand OHNE Part-Handling: Commit `a145433`**.
+- **Rollback des Wrappers**:
+  ```
+  git checkout a145433 -- nvencc64_wrapper.cmd
+  ```
+  danach committen/pushen (Repo `NVEncC64_Wrapper`). Danach ggf. `.___PUSH___.cmd` ausführen, um `bin` zu aktualisieren.
