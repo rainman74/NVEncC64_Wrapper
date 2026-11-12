@@ -14,6 +14,7 @@ Batch-Videotranscoding-Wrapper für [NVEncC64](https://github.com/rigaya/NVEnc) 
 - **AviSynth** — `*.avs`-Skripte werden ohne Codec-Erkennung direkt über den AviSynth-Reader (`--avs`) kodiert
 - **Tag-Bereinigung** — Automatische MKV-Metadaten-Normalisierung via `mkvpropedit`
 - **Fehlerbehandlung** — Nicht analysierbare Dateien (außer `*.avs`) landen in `_Check/` zur manuellen Prüfung
+- **Hilfsskripte** — `encode-all`, `move-all`, `clean-all` im `bin` (Details unten)
 - **Debug-Modus** — Detaillierte Ausgabe (Auto-Crop, Parameter, Zwischenergebnisse) via `set "DEBUG=1"` in der Wrapper-Datei
 
 ## Voraussetzungen
@@ -240,7 +241,7 @@ Aktiviert detaillierte Ausgabe der Crop-Erkennung, NVEnc-Parameter und Zwischene
 1. Alle Videodateien im aktuellen Ordner werden nacheinander verarbeitet
 2. Pro Datei: Codec-Prüfung (bei `*.avs` entfällt sie) → ggf. Auto-Crop → Encoding nach `_Converted/<name>.mkv`
 3. Nach Encoding: 5s Pause, dann nächste Datei
-4. Am Ende: Anzeige der Speicherersparnis (komprimierte vs. originale Größe)
+4. Am Ende: Anzeige der Speicherersparnis (Summe der Quellgrößen mit vorhandener `_Converted`-Ausgabe vs. Ausgabegrößen; negativer Wert = Ausgabe größer). Gibt es nichts zu tun, erfolgt keine Meldung.
 
 ## Fehlerbehandlung
 
@@ -249,6 +250,18 @@ Aktiviert detaillierte Ausgabe der Crop-Erkennung, NVEnc-Parameter und Zwischene
 - **Asymmetrische schwarze Balken** → Datei wird nach `_Check/` verschoben
 - **Quelle zu klein** (< 1280×696) → Datei wird nach `_Check/` verschoben
 - **Tag-Edit fehlgeschlagen** → Datei wird nach `_Check/` verschoben
+
+## Hilfsskripte im `bin`
+
+| Skript | Aufgabe |
+|--------|---------|
+| `encode-all.cmd` | Batch-Lauf: `nvencc64_wrapper hevc ac3 auto auto` auf den aktuellen Ordner, danach `HQ`/`LQ`/`HEVC`-Unterordner (eigene Parameter) sowie `_Various` (`*.cmd` im Ordner) |
+| `move-all.cmd` | verschiebt fertige `_Converted`-Dateien nach `E:\Videos\#Eltern Filme` bzw. `#Eltern Serien`; Serien-Heuristik `S[0-9][0-9]` bzw. `S[0-9]E[0-9]` (S01–S99); `.checked`-Marker entfallen |
+| `clean-all.cmd` | räumt lose Sidecar-Dateien in Filmordnern auf (Policy A: lose Datei gewinnt) und verschiebt Nachzügler `<Ordner>-*`/`<Ordner>.*` in bestehende Ordner; keine Log-Meldungen |
+
+> `clean-all.cmd` sollte nicht laufen, solange ein Download oder eine Kopie noch läuft: Bei `<Titel> (1).mkv` wird das Original gelöscht und die Kopie umbenannt (`:ProcessCopy`).
+
+**Entfernt:** `sort-all.cmd` sowie die alten Pipeline-Starter `_1_sort.cmd`, `_2_encode.cmd`, `_3_move.cmd`. Der Workflow läuft über `clean-all`/`encode-all`/`move-all`. Die frühere Meldung `No files found.` wird von Wrapper und Convertern nicht mehr ausgegeben, wenn im Ordner nichts zu tun ist.
 
 ## Beispiele
 

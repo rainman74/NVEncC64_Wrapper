@@ -11,7 +11,7 @@ for %%I in (HQ LQ) do if exist "%%I" (
 	for %%F in (*.mkv *.mp4) do (
 		for %%E in (mkv mp4) do (
 			if exist "_Converted\%%~nF.%%E" (
-				echo %%~nF.%%E | findstr /i "S0 S1" >nul
+				echo %%~nF.%%E | findstr /i /r /c:"S[0-9][0-9]" /c:"S[0-9]E[0-9]" >nul
 				if errorlevel 1 (
 					move "_Converted\%%~nF.%%E" "%Filme%"
 				) else (
@@ -28,15 +28,13 @@ for %%I in (HQ LQ) do if exist "%%I" (
 for %%F in (*.mkv *.mp4) do (
 	for %%E in (mkv mp4) do (
 		if exist "_Converted\%%~nF.%%E" (
-			echo %%~nF.%%E | findstr /i "S0 S1" >nul
+			echo %%~nF.%%E | findstr /i /r /c:"S[0-9][0-9]" /c:"S[0-9]E[0-9]" >nul
 			if errorlevel 1 (
 				move "_Converted\%%~nF.%%E" "%Filme%"
 			) else (
 				move "_Converted\%%~nF.%%E" "%Serien%"
 			)
 			del /Q "%%F" 2>NUL
-			attrib -h "%%~nF.checked" 2>NUL
-			del /Q "%%~nF.checked" 2>NUL
 		)
 	)
 )
@@ -45,7 +43,7 @@ if exist "_Converted" (
 	pushd "_Converted"
 
 	for %%F in (*.mkv *.mp4) do (
-		echo %%F | findstr /i "S0 S1" >nul
+		echo %%F | findstr /i /r /c:"S[0-9][0-9]" /c:"S[0-9]E[0-9]" >nul
 		if errorlevel 1 (
 			move "%%F" "%Filme%"
 		) else (
@@ -57,6 +55,5 @@ if exist "_Converted" (
 )
 
 :END
-del /Q "*.checked" 2>NUL
 endlocal
 exit /b 0

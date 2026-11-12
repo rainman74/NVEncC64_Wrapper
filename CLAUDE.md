@@ -122,6 +122,24 @@ Analog zu `nvencc64_wrapper.cmd` existiert `ffmpeg_wrapper.cmd` (Software-Encode
 
 Unterschiede sind rein encoder-spezifisch (CLI-Args für ffmpeg vs nvencc64), nicht in der Steuerlogik. Kein separater Dry-Run dokumentiert — die Mapping-Tabellen sind geteilt.
 
+## move-all.cmd — Aufräumarbeiten (Stand 2026-11-12)
+
+`move-all` ist ein Hilfsskript (kein Encoder-Wrapper), deployt nach `%CMDPATH%\bin\`. Das frühere Schwester-Skript `sort-all.cmd` wurde am **2026-11-12** auf Wunsch gelöscht (Repo- und Deploy-Kopie) — es wurde im aktuellen Flow seit längerem nicht mehr verwendet.
+
+- **attrib-Stdout-Falle in `move-all`**: `attrib -h "…checked" 2>NUL` unterdrückt die Meldung „Datei … nicht gefunden" **nicht** — `attrib` schreibt sie nach stdout, `2>NUL` fängt nur stderr. Im alten Flow entstand dadurch pro verschobener Datei eine Fehlerzeile. Ersetzt durch direktes `del /A /F /Q "…checked" >NUL 2>&1` (löscht versteckte Dateien direkt, ein Prozessaufruf weniger).
+- **Serien-Heuristik erweitert**: statt `findstr /i "S0 S1"` jetzt `findstr /i /r /c:"S[0-9][0-9]" /c:"S[0-9]E[0-9]"` (alle drei Vorkommen: HQ/LQ-Block, Root-Block, `_Converted`-Block). Deckt S01–S99 ab — vorher wurden nur S0x/S1x erkannt, z. B. `Navy CIS - S23E01` landete fälschlich in `#Eltern Filme`. Einstellige Staffeln mit Episodenmarker (`S1E10`, `S9E5`) laufen weiter über das zweite Muster (das frühere Literal `S1` hatte sie mitgefangen). Falsch-Positive wie `S1m0ne (2002)` werden vermieden.
+- **`.checked`-Marker entfernt**: Marker wurden ausschließlich von `sort-all` erzeugt/gelesen (Probe-Cache: Dateien ohne Crop wurden bei späteren sort-all-Läufen übersprungen) und von `move-all` gelöscht. Mit dem Löschen von `sort-all` ist die Marker-Logik komplett entfallen — `move-all` enthält keine Marker-Erzeugung/-Löschung mehr.
+
+## clean-all.cmd — Sidecar-Pass (Stand 2026-11-12)
+
+`clean-all.cmd` (aufgerufen über `_clean.cmd` in den Zielordnern) sortiert lose Dateien in Filmordner. Es war **rein MKV-getrieben**: verarbeitet wurde nur, was als loses `.mkv` vorliegt; der Ordner-/Zielname wird aus dem MKV-Namen abgeleitet. Nachzügler-Sidecars blieben dadurch liegen, wenn der Filmordner bereits existierte und das MKV schon darin lag — konkreter Fall: `Unschuld und Verlangen (2021)-poster.jpg` in `E:\Videos\#Eltern Filme`.
+
+**Pass 2** (nach der MKV-Schleife) verschiebt verwaiste Sidecars zu bereits existierenden Ordnern:
+- Muster `<Ordner>-*` und `<Ordner>.*`, nur wenn der Ordner existiert; ausgeschlossen sind `_Converted`, `_Check`, `_HEVC` sowie Medien-Endungen (`.mkv/.mp4/.avi/.mov/.webm/.mpg`).
+- **Policy A (vom User gewählt): lose Datei gewinnt** → `move /Y`, **ohne zusätzliche Ausgaben** (bewusst keine Echo-Zeilen/Log-Meldungen; der Lauf bleibt so still wie vorher). Hintergrund: `move` überschreibt in dieser Umgebung auch ohne `/Y` still; die auf 490x720 normalisierten Poster (aus `poster.cmd`) sind die gewünschte Version und sollen tMM-Scrapes (480x720) ersetzen.
+- Grenzen: Präfix-Kollisionen bei Ordnernamen, die Präfixe voneinander sind (`Film` vs. `Film-2`); Sprachsuffixe (`-poster.de.jpg`) werden nicht erkannt; Nachzügler ohne existierenden Ordner bleiben liegen; Serien-Naming (`Navy CIS - S23E01-thumb.jpg` → `Navy CIS\Staffel N`) ist nicht abgedeckt.
+- **Warnung zu `:ProcessCopy`**: Bei `<Titel> (1).mkv` löscht clean-all das Original und benennt die `(1)`-Kopie um — nicht ausführen, solange ein Download oder eine Kopie noch läuft.
+
 ## Konventionen für Erweiterungen
 
 Bei Änderungen oder Erweiterungen an `nvencc64_wrapper.cmd` **oder** `ffmpeg_wrapper.cmd` (siehe vorheriger Abschnitt — beide müssen synchron gehalten werden):
@@ -131,3 +149,11 @@ Bei Änderungen oder Erweiterungen an `nvencc64_wrapper.cmd` **oder** `ffmpeg_wr
 - **Neue Encoder?** Analog zu AV1 entweder explizit auf `SETQUALITY-HEVC` mappen (mit Kommentar warum) oder eigene `:SETQUALITY-<NAME>`-Routine schreiben.
 - **Neue PS-Sub-Skripte?** Marker-Format `#PS_<NAME>_BEGIN#` / `#PS_<NAME>_END#` verwenden, Block am Ende der `.cmd` anhängen, Extraction-Logik aus `:EDIT_TAGS` (Z. 411) oder `:RUN_PROBE` (Z. 564) kopieren.
 - **Neue Branches in :REMUX_IF_NEEDED?** `goto` verwenden, nicht `if`-Klammern (siehe Hinweis in Aktive Fixes #3).
+
+## Meldungen, Pipeline & Deployment (Stand 2026-11-12)
+
+- **Stiller Leerlauf**: `echo No files found.` und die Abschlusszeile `[INFO] Savings: …` wurden aus `nvencc64_wrapper.cmd` und `ffmpeg_wrapper.cmd` (sowie aus den Convertern des FFmpeg_Wrapper-Repos) **entfernt**. Bei leerem Ordner/„nichts zu tun" gibt der Wrapper jetzt **keine** Ausgabe mehr aus (Exit 0). Grund: Es waren keine Fehler, der User wollte sie nicht sehen.
+- **Alte Pipeline entfernt**: `sort-all.cmd` gelöscht; die Starter `_1_sort.cmd`, `_2_encode.cmd`, `_3_move.cmd` (in `%CMDPATH%\bin\scripts\`) gelöscht; `encode-edit.cmd` gelöscht (referenzierte das gelöschte `sort-all.cmd`). Der Workflow läuft über `clean-all` / `encode-all` / `move-all`.
+- **README.md** erweitert: neuer Abschnitt „Hilfsskripte im `bin`" (encode-all, move-all inkl. Serien-Heuristik/`.checked`-Wegfall, clean-all inkl. `:ProcessCopy`-Warnung), Features-Bullet „Hilfsskripte", Arbeitsablauf-Punkt 4 (Savings) präzisiert; Hinweis auf entfernte Pipeline/Lean-Meldungen.
+- **Repo vs. `bin`**: Das Repo enthält die sanitisierte Version von `nvencc64_wrapper.cmd`; im `bin` können **private Filter-Tokens** stehen (`smooth`, `nlmeans`, `f1`–`f3` mit eigenen `--vpp-*`-Ketten, z. B. realesrgan/msmooth/chromashift). `.___PUSH___.cmd` überschreibt `bin` per xcopy — vor dem Push ggf. die bin-Datei sichern und danach zurückkopieren (Repo bleibt öffentlich/sanitisert).
+- **Deployment**: `.___PUSH___.cmd` aus dem Repo-Root (xcopy `*.cmd` → `%CMDPATH%\bin`, `git add .`, Commit „Updates", `git push`). `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd` sind von der Kopie ausgeschlossen.
