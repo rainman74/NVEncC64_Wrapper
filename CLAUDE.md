@@ -2,6 +2,10 @@
 
 Wrapper-Skript für `nvencc64.exe` (NVIDIA Hardware-Encoder). Hauptsächlich eine `.cmd`-Datei plus zugehörige Hilfs-Skripte.
 
+> **Dokument-Stand: 2026-11-25.** Abgleich gegen den Repo-Code: `nvencc64_wrapper.cmd` = 1050 Zeilen (Commit `5c34ad0` + 1772-Ergänzung, noch nicht committed); `ffmpeg_wrapper.cmd` = 1004 Zeilen, Commit `83c3e74` (Schwester-Repo `D:\Sources\FFmpeg_Wrapper`). **Alle Zeilenangaben in diesem Dokument beziehen sich auf diesen Stand** — bei Code-Änderungen Zeilenangaben mitpflegen (oder Abschnitt „Toter Code" als Referenz nutzen, dort steht das Prüfverfahren).
+>
+> **Korrekturen 2026-11-25 (Doku-Drift beseitigt):** Pfad-Setup (Z. 7–9 nutzt `%CMDPATH%\bin\nvvfx_models`, nicht `NVVFX_MODEL_DIR`), Zeilennummern in Fixes-Tabelle/D1–D6/Konventionen, Token-Naming in SETCROP (kein `c`-Präfix), SETCROP-Semantik (teils Crop + Resize, nicht „nur Resize"), Token-Zahl (134 statt 125), `cmd /c`-Subshell-Aussage, ffmpeg_wrapper-Divergenz. **Nachtrag:** `1772` als horizontale Standardbreite + Crop-Token in beiden Wrappern (nvencc Z. 152/814/882; Auto-Erkennung funktional getestet); ffmpeg-Baseline auf `83c3e74`/1004 Zeilen aktualisiert.
+
 ## Target Platform
 
 Dieses Projekt läuft ausschließlich auf **Windows 11** mit **PowerShell 5.1+**.
@@ -9,32 +13,35 @@ Dieses Projekt läuft ausschließlich auf **Windows 11** mit **PowerShell 5.1+**
 Folge daraus:
 - PowerShell 3.0+-Features (z.B. `[string]::IsNullOrWhiteSpace`) sind verfügbar — kein Workaround nötig.
 - Codepage für `call` von generierten `.cmd`-Dateien ist Windows-1252 (deutsche Locale) — Sonderzeichen in Dateinamen/Track-Namen funktionieren.
-- Im EDIT_TAGS-PS-Block wird `Out-File -Encoding Default` absichtlich **nicht** verwendet (siehe Aktive Fixes #1) — stattdessen `WriteAllText` mit explizitem ASCII-Encoding.
+- In den PS-Blöcken wird ASCII-Encoding deterministisch erzwungen (siehe Aktive Fixes #1): `EDIT_TAGS` schreibt die SET-Datei per `[System.IO.File]::WriteAllText(..., ASCII)` (Z. 1049), `RUN_PROBE` per `Out-File -Encoding ASCII` (Z. 923/932/956). `Out-File -Encoding Default` kommt im Wrapper nicht vor.
 
 ## Pfad-Setup (CMDPATH-basiert)
 
 Der Wrapper ist **explizit nicht** skript-relativ, sondern nutzt den System-`CMDPATH`. Architekturentscheidung mit Konsequenzen:
 
 ```batch
-REM Z. 7-9 im INIT-Block:
-set "VFX_MODEL_DIR=%NVVFX_MODEL_DIR%"
+REM Z. 7-9 im INIT-Block (Stand 2026-11-25):
+set "VFX_MODEL_DIR=%CMDPATH%\bin\nvvfx_models"
 set "ONNX_MODEL_DIR=%CMDPATH%\bin\onnx_models"
 set "NV_FLAGS=--vpp-onnx-model-dir "%ONNX_MODEL_DIR%" --vpp-nvvfx-model-dir "%VFX_MODEL_DIR%""
 ```
 
+> **Korrektur 2026-11-25:** Eine frühere Fassung dieses Abschnitts zeigte `set "VFX_MODEL_DIR=%NVVFX_MODEL_DIR%"` und verlangte ein Modell-Verzeichnis unter `C:\Program Files\NVIDIA Corporation\…`. Das ist seit Commit `4bdf067` überholt: die Repo-Version holt **beide** Modellordner aus `%CMDPATH%\bin\`; `NVVFX_MODEL_DIR` kommt in `nvencc64_wrapper.cmd` nicht mehr vor.
+
 **Voraussetzungen für korrekte Funktion:**
-- `CMDPATH` muss auf das Verzeichnis zeigen, in dem `bin\onnx_models\` liegt (typisch: zentrale Toolchain wie `D:\Apps\Commands`)
-- `NVVFX_MODEL_DIR` muss auf den NVIDIA-Video-Effects-Modell-Ordner zeigen (typisch: `C:\Program Files\NVIDIA Corporation\NVIDIA Video Effects\models`)
+- `CMDPATH` muss auf das Verzeichnis zeigen, in dem `bin\onnx_models\` **und** `bin\nvvfx_models\` liegen (typisch: zentrale Toolchain wie `D:\Apps\Commands`)
 
 **Warum nicht `%~dp0`?** Der Wrapper kann unabhängig von der Toolchain-Installation in beliebigen Verzeichnissen liegen (z.B. `D:\Sources\NVEncC64_Wrapper\`), während die Modelle zentral vorgehalten werden. Bei einer reinen `%~dp0`-basierten Variante müsste `bin\onnx_models\` zwingend neben dem Wrapper liegen — das schränkt die Deployment-Optionen ein.
 
-**Konsequenz für Tests:** Bei CMDPATH=`D:\Apps\Commands` müssen onnx_models unter `D:\Apps\Commands\bin\onnx_models\` liegen. Wer den Wrapper auf einem anderen System laufen lässt, muss CMDPATH und NVVFX_MODEL_DIR entsprechend setzen.
+**Konsequenz für Tests:** Bei CMDPATH=`D:\Apps\Commands` müssen `onnx_models` unter `D:\Apps\Commands\bin\onnx_models\` und `nvvfx_models` unter `D:\Apps\Commands\bin\nvvfx_models\` liegen. Wer den Wrapper auf einem anderen System laufen lässt, muss CMDPATH entsprechend setzen.
 
 ## nvencc64_wrapper.cmd — Dry-Run-Status
 
-Am **2026-07-21** wurde ein vollständiger statischer Dry-Run der Datei `nvencc64_wrapper.cmd` durchgeführt.
+Am **2026-07-21** wurde ein vollständiger statischer Dry-Run der Datei `nvencc64_wrapper.cmd` durchgeführt (damaliger Dateistand).
 
-**Ergebnis:** Skript ist valide. 125/125 Tokens sind in den Mapping-Tabellen abgedeckt. 22 End-to-End-Szenarien PASS.
+**Ergebnis (damals):** Skript ist valide. 125/125 Tokens waren in den Mapping-Tabellen abgedeckt. 22 End-to-End-Szenarien PASS.
+
+**Abgleich 2026-11-25 (heutige Datei, 1050 Zeilen):** **134 gültige Tokens** — 127 in den sieben 1:1-Tabellen (`TOK_ENCODER` 5, `TOK_AUDIO` 9, `TOK_CROP` 47, `TOK_FILTER` 32, `TOK_MODE` 27, `TOK_DECODER` 4, `TOK_CHKENC` 3), dazu `TOK_QUALITY` 6 und `TOK_SEEK` 1. Mapping-Abgleich mechanisch geprüft: 0 Tokens ohne Branch, 0 Branches ohne Token (Details im Abschnitt „Toter Code").
 
 > **Hinweis:** Dieser Dry-Run-Stand bezieht sich auf den Code vor den unten dokumentierten aktiven Fixes. Ein erneuter Dry-Run nach den Fixes wurde nicht durchgeführt, da die Fixes rein additiv / bugfixend sind (kein Token-Mapping verändert, keine Mapping-Tabelle erweitert).
 
@@ -56,61 +63,66 @@ Konsequenz für die Zeilennummern in diesem Dokument: viele `MAIN`-interne Zeile
 Diese Punkte wurden in einem Review zunächst als potentielle Bugs gemeldet und vom User explizit als **gewollt und in Ordnung** bestätigt. Sie dürfen in zukünftigen Reviews nicht erneut als Issues markiert werden, sofern sich die Plattform-Anforderungen nicht ändern:
 
 1. **`[string]::IsNullOrWhiteSpace` im EDIT_TAGS-Block** — erfordert PowerShell 3.0+. Auf Windows 11 mit PS 5.1 kein Problem.
-2. **AV1-Encoder nutzt `SETQUALITY-HEVC`** (Mapping in `:MAIN` Z. 293–294) — keine eigene AV1-Qualitätstabelle. Bewusste Designentscheidung.
+2. **AV1-Encoder nutzt `SETQUALITY-HEVC`** (Mapping in `:MAIN` Z. 339–340) — keine eigene AV1-Qualitätstabelle. Bewusste Designentscheidung.
 
-### Aktive Fixes (Stand 2026-08-09)
+### Aktive Fixes (Stand 2026-08-09; Zeilenangaben abgeglichen 2026-11-25)
 
 Diese Fixes sind in **beide** Wrapper (`nvencc64_wrapper.cmd` und `ffmpeg_wrapper.cmd`) übernommen. Die Zeilennummern unterscheiden sich — siehe Tabelle.
 
 | # | Fix                                          | nvencc64_wrapper.cmd        | ffmpeg_wrapper.cmd          |
 |---|----------------------------------------------|-----------------------------|-----------------------------|
-| 1 | SET-Datei-Encoding hart ASCII                | Z. 940                      | Z. 997                      |
-| 2 | Debug-Instrumentierung in EDIT_TAGS          | Z. 411–499 (EDIT_TAGS…EDIT_TAGS_CLEANUP) | Z. 451–539 (EDIT_TAGS…EDIT_TAGS_CLEANUP) |
-| 3 | `:REMUX_IF_NEEDED` Lavf-Fix                  | Z. 504, Calls Z. 279/361    | Z. 544, Calls Z. 298/407    |
-| 4 | Check-Encoded-Block: Re-Mux via mkvmerge    | Z. 270–296                  | Z. 286–321 (auch `%%Format%%` statt `%Format%` in Z. 269 für delayed-expansion-kompatibles mediainfo-Template) |
-| 5 | SETCROP-Tokens: nur Resize, kein impliziter Crop mehr | Z. 107–150                | Z. 128–172                  |
-| 6 | ffmpeg-AQ-Optionen: Bindestrich statt Unterstrich    | (n/a — nvencc)             | Z. 419                       |
+| 1 | SET-Datei-Encoding hart ASCII                | Z. 923/932/956 (`Out-File -Encoding ASCII`), Z. 1049 (`WriteAllText`) | Z. 877/886/910 (`Out-File -Encoding ASCII`), Z. 1003 (`WriteAllText`) |
+| 2 | Debug-Instrumentierung in EDIT_TAGS          | Z. 509–600 (EDIT_TAGS…EDIT_TAGS_CLEANUP), 19 `%DBG%` | Z. 458–546 (EDIT_TAGS…EDIT_TAGS_CLEANUP) |
+| 3 | `:REMUX_IF_NEEDED` Lavf-Fix                  | Z. 602; Calls Z. 326/424    | Z. 551; Calls Z. 302/420    |
+| 4 | Check-Encoded-Block: Re-Mux via mkvmerge    | Z. 296–327                  | Z. 272–303 (auch `%%Format%%` statt `%Format%` in Z. 254 für delayed-expansion-kompatibles mediainfo-Template) |
+| 5 | SETCROP-Tokens: explizite Crop-/Resize-Ketten | Z. 111–163                 | Z. 96–146                   |
+| 6 | ffmpeg-AQ-Optionen: Bindestrich statt Unterstrich | (n/a — nvencc)        | Z. 401                       |
+
+> Die früher hier genannten Nummern (nvencc: 940/411–499/504/279+361/270–296/107–150; ffmpeg: 997/451–539/544/298+407/286–321/419) stammten von älteren Dateiständen und sind damit überholt. Stand 2026-11-25: nvencc 1050 Zeilen (Commit `5c34ad0` + 1772-Ergänzung), ffmpeg 1004 Zeilen (Commit `83c3e74`).
 
 Im Detail:
 
-1. **SET-Datei-Encoding hart ASCII**: `Out-File -Encoding Default` → `[System.IO.File]::WriteAllText($SetFile, ..., [System.Text.Encoding]::ASCII)`. Grund: BOM-Risiko bei `Out-File -Encoding Default` auf manchen Setups. Mit ASCII ist es deterministisch.
+1. **SET-Datei-Encoding hart ASCII**: ASCII wird in beiden PS-Blöcken erzwungen — `EDIT_TAGS` schreibt die SET-Datei per `[System.IO.File]::WriteAllText($SetFile, ..., [System.Text.Encoding]::ASCII)` (nvencc Z. 1049), `RUN_PROBE` per `Out-File -Encoding ASCII` (nvencc Z. 923/932/956). Grund: BOM-Risiko bei `Out-File -Encoding Default` auf manchen Setups. Mit ASCII ist es deterministisch; `Out-File -Encoding Default` kommt in den Wrappern nicht mehr vor.
 
-2. **Debug-Instrumentierung in EDIT_TAGS**: Zehn `%DBG%`-Marker geben bei `set DEBUG=1` Einsicht in Dateigröße vor/nach, Marker-Lines, PS-Exit, SET-File-Größe, EDIT_ACTIONS-Länge+Header, mkvpropedit-Exit, mediainfo/ffprobe-Verifikation. Hinter `%DBG%` (siehe INIT) — kein Overhead, wenn Debug aus. Umgebungsvariable wurde von `DEBUG_AUTOCROP` auf `DEBUG` umbenannt, weil sie jetzt mehr als nur Auto-Crop debuggt (auch EDIT_TAGS und REMUX_IF_NEEDED). `set "DEBUG=0"` steht explizit am Anfang jedes Wrappers und überschreibt damit eventuelle Environment-Variablen.
+2. **Debug-Instrumentierung in EDIT_TAGS**: `%DBG%`-Marker (im ganzen nvencc-Wrapper **47** Stellen, davon 19 in EDIT_TAGS) geben bei `set DEBUG=1` Einsicht in Dateigröße vor/nach, Marker-Lines, PS-Exit, SET-File-Größe, EDIT_ACTIONS-Länge+Header, mkvpropedit-Exit, mediainfo/ffprobe-Verifikation. Hinter `%DBG%` (siehe INIT) — kein Overhead, wenn Debug aus. Umgebungsvariable wurde von `DEBUG_AUTOCROP` auf `DEBUG` umbenannt, weil sie jetzt mehr als nur Auto-Crop debuggt (auch EDIT_TAGS und REMUX_IF_NEEDED). `set "DEBUG=0"` steht explizit am Anfang jedes Wrappers und überschreibt damit eventuelle Environment-Variablen (siehe auch „Toter Code" — dadurch ist `:DEBUG` bis zum Datei-Edit unerreichbar).
 
 3. **Lavf-Kompatibilitäts-Fix via `:REMUX_IF_NEEDED`**: nvencc64 nutzt für MKV-Output den FFmpeg-Lavf-Muxer (avcodec muxer), dessen Output von MediaInfo / Windows-Property-Handler nicht voll geparst wird (Symptom: 0×0 in Explorer, "alle Tags weg"). Nach EDIT_TAGS prüft die Funktion generisch:
-   - **Branch 1 (komplett kaputt, ff_streams=0)**: Source nach `_Check` verschieben, dann `_Converted`-Datei löschen — NUR wenn move erfolgreich war, und NUR wenn Pfade unterschiedlich sind (sonst wäre die Datei schon weg). Reihenfolge: erst `move`, dann `del` (sonst Datenverlust bei move-Fehler).
+   - **Branch 1 (komplett kaputt: `ffprobe` liefert keinen Wert oder 0 Streams)**: Source nach `_Check` verschieben, dann `_Converted`-Datei löschen — NUR wenn move erfolgreich war, und NUR wenn Pfade unterschiedlich sind (sonst wäre die Datei schon weg). Reihenfolge: erst `move`, dann `del` (sonst Datenverlust bei move-Fehler).
    - **Branch 2 (Lavf-Inkompatibilität, ff_streams>0 aber mi_video_count leer)**: `mkvmerge -o tmp file && move tmp file` zur Container-Normalisierung.
    - Generischer Ansatz, weil er nicht von einem bestimmten Muxer abhängt — jede Container-Inkompatibilität wird erkannt.
    - **Wichtiger Implementierungs-Hinweis**: Branches werden via `goto :BRANCH_BROKEN` / `goto :BRANCH_HEALTHY` getrennt, NICHT via `if (...)` mit Klammern. Hintergrund: mit `setlocal EnableDelayedExpansion` + `%DBG%`-Makro-Ersetzung hat die `if`-Variante die Bedingung nicht zuverlässig ausgewertet (Empirie aus Debug-Logs: `is_broken=0` wurde angezeigt, aber Branch-1-Code lief trotzdem). Mit `goto` ist die Logik eindeutig.
-   - **Subshell-Pattern für mediainfo**: Innerhalb von `setlocal EnableDelayedExpansion` würde `for /f "usebackq" %%V in ('mediainfo "--Inform=General;%VideoCount%" ...')` das `%VideoCount%` als leere Variable interpretieren (ergibt leeren String). Daher wird `cmd /c` als Subshell eingesetzt — darin werden `%%X%%` zu `%X%` aufgelöst, und mediainfo bekommt den korrekten Template-Token. Wird in EDIT_TAGS (für `%Width%x%Height%` etc.) und in `:REMUX_IF_NEEDED` (für `%VideoCount%`) einheitlich verwendet.
+   - **Subshell-Pattern für mediainfo**: Innerhalb von `setlocal EnableDelayedExpansion` würde ein einfaches `%VideoCount%` als leere Umgebungsvariable expandieren — mediainfo bekäme kein Template-Token. Daher steht in den Aufrufen die verdoppelte Form `%%VideoCount%%` bzw. `%%Width%%x%%Height%%` (Z. 278, 588–593, 614). **Korrektur 2026-11-25:** Die Repo-Version ruft mediainfo dabei **ohne** `cmd /c`-Subshell auf; das ist auch nicht nötig — verifiziert mit `test.mkv`: `mediainfo "--Inform=Video;%%Format%%"` liefert `AVC`, die einfache `%Format%`-Variante liefert Müll (`Forced : No`). Die frühere `cmd /c`-Variante funktioniert ebenfalls, ist in der Repo-Version aber nicht implementiert.
 
-4. **Check-Encoded-Block: Re-Mux via mkvmerge** (Z. 268–290): Für Source-Dateien mit Container != `.mkv` (z.B. `.mp4`/`.mov`/`.avi`/`.webm`, die schon im Ziel-Codec vorliegen), wird die Datei via `mkvmerge -o` re-encodet statt nur per `move` umbenannt. Hintergrund: Eine `.mp4` in `.mkv` umzubenennen erzeugt kein gültiges Matroska (Inhalt bleibt MP4-Box-Format), EDIT_TAGS (`mkvpropedit`) scheitert mit "not a Matroska file", der EDIT_TAGS-Fehlerbehandler (Z. 484) verschiebt sie nach `_Check`. Symptom: Datei geht erst nach `_Converted`, dann sofort nach `_Check` (zwei Moves). Re-Mux via mkvmerge ist schnell (Sekunden, kein Re-Encode), produziert echtes MKV-Container-Format. Für bereits `.mkv`-quellen bleibt der einfache `move`. Fallback bei mkvmerge-Fehler: einfacher `move` (mit Warnung) — Datei bleibt dann vermutlich kaputt in `_Converted`. WARNING-Message ist kontextspezifisch: `.mkv` → "Moving to", sonst → "Re-muxing to".
+4. **Check-Encoded-Block: Re-Mux via mkvmerge** (Z. 296–327): Für Source-Dateien mit Container != `.mkv` (z.B. `.mp4`/`.mov`/`.avi`/`.webm`, die schon im Ziel-Codec vorliegen), wird die Datei via `mkvmerge -o` re-encodet statt nur per `move` umbenannt. Hintergrund: Eine `.mp4` in `.mkv` umzubenennen erzeugt kein gültiges Matroska (Inhalt bleibt MP4-Box-Format), EDIT_TAGS (`mkvpropedit`) scheitert mit "not a Matroska file", der EDIT_TAGS-Fehlerbehandler (Z. 546–558 / 579–584) verschiebt sie nach `_Check`. Symptom: Datei geht erst nach `_Converted`, dann sofort nach `_Check` (zwei Moves). Re-Mux via mkvmerge ist schnell (Sekunden, kein Re-Encode), produziert echtes MKV-Container-Format. Für bereits `.mkv`-quellen bleibt der einfache `move`. Fallback bei mkvmerge-Fehler: einfacher `move` (mit Warnung) — Datei bleibt dann vermutlich kaputt in `_Converted`. WARNING-Message ist kontextspezifisch: `.mkv` → "Moving to", sonst → "Re-muxing to".
 
-5. **SETCROP-Tokens aufgeräumt** (nvencc Z. 107–150, ffmpeg Z. 128–172): Tokens sind reine Resize-Befehle (`--output-res` / `scale=`), kein impliziter Crop mehr (frühere Werte wie `--crop 60,0,60,0` bei `c720` waren willkürlich und haben das Aspect-Ratio versteckt verändert). Die Tokens bedeuten jetzt:
+5. **SETCROP-Tokens: explizite Crop-/Resize-Ketten** (nvencc Z. 111–163, ffmpeg Z. 96–146): Die Tokens enthalten keinen impliziten *Default*-Crop mehr (kein automatisches `--crop` bei reinen Resize-Tokens). **Korrektur 2026-11-25:** Sie sind aber auch nicht „nur Resize" — pro Token ist die Kette explizit hinterlegt, teils Crop + Resize. Stand Repo-Code:
    - **`none`**: kein Crop, kein Resize (Source bleibt wie sie ist)
-   - **`auto`**: CROP_MODE=AUTO, RUN_PROBE ermittelt Crop autonom (impliziter H/V-Crop für Letterbox/Pillarbox)
+   - **`auto`**: `CROP_MODE=AUTO`, `RUN_PROBE` ermittelt Crop autonom (impliziter H/V-Crop für Letterbox/Pillarbox)
    - **`43`** → `--output-res 720x540` (4:3-Format)
    - **`169`** → `--output-res 960x540` (16:9-Format)
-   - **`c696`-`c1040`** → nur V-Crop auf Ziel-Höhe (Aspect-Ratio ändert sich, für 16:9 mit Letterbox oben+unten gedacht)
-   - **`c720`/`c720p`/`c720f`**, **`c1080`/`c1080p`/`c1080f`**, **`c2160`/`c2160p`/`c2160f`**: Resize auf Standard-HD-Auflösungen, `f`-Varianten erzwingen fixe Dimension (kann zu Verzerrung führen wenn Source nicht passend)
-   - **`c1348`**, **`c1440`**: nur Resize auf 4:3-Format (Aspect-Ratio ändert sich, für 16:9-Source in 4:3-Container gedacht)
-   - **`c1408`-`c1800`**: nur Resize auf DVD-PAL-Auflösungen (Aspect-Ratio-Verzerrung wenn Source 16:9 ist, also nur für 4:3-Source gedacht)
-   - **`c1`-`c6`**: keine (leer) — früher als User-Defined-Slots dokumentiert, aktuell ungenutzt
+   - **`696`–`1040`** → nur V-Crop (`--crop 0,N,0,N`), kein Resize — für 16:9 mit Letterbox oben+unten gedacht
+   - **`720`/`720p`/`720f`**, **`1080`/`1080p`/`1080f`**, **`2160`/`2160p`/`2160f`**: nur `--output-res` auf Standard-HD-Auflösungen; `f`-Varianten erzwingen fixe Dimension
+   - **`1440`** → `--crop 240,0,240,0 --output-res 1440x1080`; **`1440f`** → nur `--output-res 1440x1080`
+   - **`1348`/`1408`/`1420`/`1480`/`1500`/`1620`/`1764`/`1772`/`1780`/`1788`/`1792`/`1800`** → Seiten-Crop + `--output-res <N>x1080` (Crop-Werte: `1348`→286, `1408`→256, `1420`→250, `1480`→220, `1500`→210, `1620`→150, `1764`→78, **`1772`→74**, `1780`→70, `1788`→66, `1792`→64, `1800`→60)
+   - **`c1`–`c6`**: keine (leer) — reservierte, aktuell ungenutzte Slots
+   - **Horizontale Auto-Erkennung** (`$StandardWidths`, Z. 882): nutzt dieselben Standardbreiten inkl. `1772`; bei rein seitlichen Balken (`TotalV ≤ 2`, `TotalH > 8`) wird die nächstliegende Breite gewählt und beidseitig gecroppt (Test 2026-11-25 mit 74px-Balken → `74:0:74:0`, Res `1772x1080`).
+   - **Token-Naming:** numerische Tokens haben **kein `c`-Präfix** (`696`, nicht `c696`); ein `c`-Präfix existiert nur bei `c1`–`c6`. Die frühere Doku-Schreibweise `c720`/`c696` stammt aus der `bin`-Variante.
+   - **ffmpeg-Pendant:** Variable heißt dort `CROP_VAL` statt `CROP`; `696`–`1040` → `crop=1920:N:0:N` (nur Crop), `720*`/`1080*`/`2160*` → `zscale=w=…,h=…:filter=spline36` (seit 2026-11-25, vorher `scale=`), `1348`/`1420`/`1440`/`1480`/`1500`/`1764`/`1772`/`1780`/`1788`/`1792`/`1800` → `crop=…:1080:…` (nur Crop, **kein** `scale`; `1440f` → `crop=1440:1080:0:0`, `1772` → `crop=1772:1080:74:0`). Der ffmpeg-Wrapper hat **kein** `43`/`169`/`752`/`1408`/`1620` (Abgleich 2026-11-25).
 
-   **Faustregel**: Für Letterbox/Pillarbox-Entfernung → `c0+auto` (oder in Verbindung mit einem Resize-Token). Die expliziten Tokens machen nur Resize, keinen impliziten Crop. ffmpeg_wrapper hatte ursprünglich nur c1420-c1800, c1408 und c1620 wurden für 1:1-Sync zum nvencc_wrapper nachgerüstet.
+   **Faustregel**: Für Letterbox/Pillarbox-Entfernung → `auto` (autonomer Probe-Crop) oder ein `696`–`1040`-Token. Die Tokens machen genau das, was hinterlegt ist — keinen zusätzlichen Crop.
 
-6. **ffmpeg-Wrapper: AQ-Optionen Bindestrich statt Unterstrich** (ffmpeg Z. 419): `-spatial_aq:v` → `-spatial-aq:v`, `-temporal_aq:v` → `-temporal-aq:v`. Die anderen Optionen im Aufruf (`-aq-strength:v`, `-rc-lookahead:v`, `-multipass:v`) waren schon mit Bindestrich. Symptom des Bugs: `Unrecognized option 'spatial_aq:v'. Error splitting the argument list: Option not found` direkt beim ffmpeg-Start.
+6. **ffmpeg-Wrapper: AQ-Optionen Bindestrich statt Unterstrich** (ffmpeg Z. 401): `-spatial_aq:v` → `-spatial-aq:v`, `-temporal_aq:v` → `-temporal-aq:v`. Die anderen Optionen im Aufruf (`-aq-strength:v`, `-rc-lookahead:v`, `-multipass:v`) waren schon mit Bindestrich. Symptom des Bugs: `Unrecognized option 'spatial_aq:v'. Error splitting the argument list: Option not found` direkt beim ffmpeg-Start.
 
 ### Akzeptierte Design-Issues (NICHT erneut flaggen ohne Rückfrage)
 
 Auch diese wurden explizit als gewollt bestätigt:
 
-- **D1** (Z. 841–842): `$Top`/`$Bottom` enthalten Seiten-Crop-Werte, nicht Top/Bottom. Irreführend, aber funktional korrekt.
-- **D2** (Z. 246, in `:MAIN`): Fragmentierte `RESIZE_REQUIRED`-Logik über mehrere MAIN-Stellen verteilt. Funktioniert wie intendiert.
-- **D3** (Z. 365–368, in `:MAIN`): 5-Sekunden-Wartezeit zwischen Encodes (`for /L 5,-1,1` × `timeout /t 1`). Bewusste Drosselung.
-- **D4** (Z. 276, in `:MAIN`): Dead-looking `powershell write-output` URL-Print — absichtlicher Notification-Hook auf stdout.
-- **D5** (Z. 229, in `:MAIN`): `_Converted`-Verzeichnis wird unbedingt erstellt, auch wenn keine Medien gefunden werden. Akzeptiert.
-- **D6** (Z. 276, in `:MAIN`): URL-Print vor dem ersten `mediainfo`-Aufruf pro Datei. Akzeptiert.
+- **D1** (Z. 950–951): `$Top`/`$Bottom` enthalten Seiten-Crop-Werte, nicht Top/Bottom. Irreführend, aber funktional korrekt.
+- **D2** (Z. 380–386 und 401–403, in `:MAIN`): Fragmentierte `RESIZE_REQUIRED`-Logik über mehrere MAIN-Stellen verteilt. Funktioniert wie intendiert. Detail: `RESIZE_REQUIRED=1` setzt nur der Token-Pfad (Z. 383); der AUTO-Crop-Pfad setzt es nie (Z. 366) — `--vpp-resize spline36` wird daher nur bei Resize-Tokens injiziert.
+- **D3** (Z. 427–430, in `:MAIN`): 5-Sekunden-Wartezeit zwischen Encodes (`for /L 5,-1,1` × `timeout /t 1`). Bewusste Drosselung.
+- **D4** (Z. 322, in `:MAIN`, TARGET_DIR-Pfad): Dead-looking `powershell write-output` URL-Print — absichtlicher Notification-Hook auf stdout.
+- **D5** (Z. 248, in `:MAIN`): `_Converted`-Verzeichnis wird unbedingt erstellt, auch wenn keine Medien gefunden werden. Akzeptiert.
+- **D6** (Z. 388, in `:MAIN`, Encode-Pfad): URL-Print vor dem ersten `mediainfo`-Aufruf pro Datei. Akzeptiert.
 - **D7**: `:REMUX_IF_NEEDED` re-muxt jede Datei, bei der `ffprobe` Tracks sieht, `mediainfo` aber nicht. Generischer Ansatz statt expliziter Lavf-Heuristik — kostet pro Aufruf zwei Tool-Invocations (ffprobe + mediainfo), bringt aber Robustheit gegen alle Container-Inkompatibilitäten.
 - **D8**: CMDPATH-basierte Modell-Pfade (siehe Abschnitt oben) statt `%~dp0`-basiert. Bewusste Architekturentscheidung gegen skript-relatives Deployment.
 
@@ -118,9 +130,17 @@ Auch diese wurden explizit als gewollt bestätigt:
 
 > **Stand 2026-11-12**: `ffmpeg_wrapper.cmd` ist **nicht** in diesem Repo; die aktive Quelle liegt im Schwester-Repo `D:\Sources\FFmpeg_Wrapper\` (dort committed) und deployed unter `D:\Apps\Commands\bin\ffmpeg_wrapper.cmd`. Die Sektion bleibt hier als Referenz.
 
-Analog zu `nvencc64_wrapper.cmd` existiert `ffmpeg_wrapper.cmd` (Software-Encoder via FFmpeg). Er hat die gleiche Struktur: gleiche `SETxxx`-Routinen, gleiches EDIT_TAGS, gleiches `:REMUX_IF_NEEDED`. Die Fixes #1–#4 sind 1:1 übernommen. **Sonderfall Fix #4 im ffmpeg_wrapper**: zusätzlich wurde Z. 269 von `--Inform=Video;%Format%` auf `--Inform=Video;%%Format%%` korrigiert (im nvencc_wrapper war das schon korrekt). Mit dem einfachen `%Format%` und globalem `setlocal enabledelayedexpansion` wurde die Variable zu leer expandiert, mediainfo bekam kein Template-Token, `SRC_CODEC` blieb leer, Check-Encoded triggerte nie.
+Analog zu `nvencc64_wrapper.cmd` existiert `ffmpeg_wrapper.cmd` (Software-Encoder via FFmpeg). Er hat die gleiche Struktur: gleiche `SETxxx`-Routinen, gleiches EDIT_TAGS, gleiches `:REMUX_IF_NEEDED`. Die Fixes #1–#4 sind 1:1 übernommen. **Sonderfall Fix #4 im ffmpeg_wrapper**: zusätzlich wurde Z. 254 von `--Inform=Video;%Format%` auf `--Inform=Video;%%Format%%` korrigiert (im nvencc_wrapper war das schon korrekt). Mit dem einfachen `%Format%` und globalem `setlocal enabledelayedexpansion` wurde die Variable zu leer expandiert, mediainfo bekam kein Template-Token, `SRC_CODEC` blieb leer, Check-Encoded triggerte nie.
 
-Unterschiede sind rein encoder-spezifisch (CLI-Args für ffmpeg vs nvencc64), nicht in der Steuerlogik. Kein separater Dry-Run dokumentiert — die Mapping-Tabellen sind geteilt.
+**Korrektur 2026-11-25 — die Wrapper sind inzwischen divergiert** (Stand `ffmpeg_wrapper.cmd`: 1004 Zeilen, Commit `83c3e74`, 25.11.2026): Die Token-Tabellen sind **nicht mehr identisch** und getrennt zu pflegen:
+- `TOK_ENCODER`: ffmpeg zusätzlich `av10`; `TOK_AUDIO`: nvencc zusätzlich `aacs`.
+- `TOK_CROP`: ffmpeg 42 statt 47 Tokens — `43`/`169`/`752`/`1408`/`1620` fehlen dort (und ffmpeg nutzt `CROP_VAL` statt `CROP`).
+- `TOK_FILTER`: ffmpeg hat eigene Tokens (`text`, `reverb`, `deblock`, `smooth31/63`, `gauss5`, `median`, `largemedian`, `superres*`, `ushrp*`), aber nicht `bm3d`/`vsr*`/`deHalo*`/`vhsRestore`.
+- `TOK_MODE`: ffmpeg hat `yadif`/`yadifbob`/`brighter` statt `ivtc`/`rtgmc*`/`framegen*`.
+- `TOK_DECODER`: ffmpeg 9 Tokens (`cuda`, `cuvid`, `vp8`, `vp9`, `vpx`, `mpeg2` …) statt 4.
+- **Zuschnitt-Profile:** `720*`/`1080*`/`2160*` nutzen `zscale=…:filter=spline36` (seit 25.11., vorher `scale=`); `1772` ergänzt.
+
+Gemeinsam sind Struktur und Fixes #1–#4 — die Token-Tabellen nicht. Kein separater Dry-Run für ffmpeg dokumentiert.
 
 ## move-all.cmd — Aufräumarbeiten (Stand 2026-11-12)
 
@@ -140,15 +160,76 @@ Unterschiede sind rein encoder-spezifisch (CLI-Args für ffmpeg vs nvencc64), ni
 - Grenzen: Präfix-Kollisionen bei Ordnernamen, die Präfixe voneinander sind (`Film` vs. `Film-2`); Sprachsuffixe (`-poster.de.jpg`) werden nicht erkannt; Nachzügler ohne existierenden Ordner bleiben liegen; Serien-Naming (`Navy CIS - S23E01-thumb.jpg` → `Navy CIS\Staffel N`) ist nicht abgedeckt.
 - **Warnung zu `:ProcessCopy`**: Bei `<Titel> (1).mkv` löscht clean-all das Original und benennt die `(1)`-Kopie um — nicht ausführen, solange ein Download oder eine Kopie noch läuft.
 
+## Toter Code — Kandidatenliste (Stand 2026-11-25)
+
+Systematische Dead-Code-Prüfung von `nvencc64_wrapper.cmd` (1050 Zeilen, Commit `5c34ad0` + 1772-Ergänzung). Geprüft: alle Labels gegen `call`/`goto`-Ziele (dynamischer Dispatch: **keiner**), alle `set`-Ziele gegen Reads (`%X%`, `!X!`, `!X:~…!`, `defined X`, indirekte Reads `!%TOK%!`), Token-Listen gegen Branches, `REM`-Zeilen, Code nach bedingungslosen Sprüngen, doppelte Labels, PS-Blöcke. **Ergebnis: 9 belegte Dead-Code-Stellen** — bis auf den Diagnose-Kanal (B) ohne Verhaltenswirkung. Nichts davon ist entfernt; das ist die Arbeitsliste für später. Alle Zeilenangaben = Stand oben; nach Wrapper-Änderungen neu verifizieren (Verfahren unter F).
+
+### A) Definitiv tot — risikofrei entfernbar
+
+| Stelle | Befund | Impact |
+|---|---|---|
+| Z. 250, 255, 436 | `FOUND` wird gesetzt und in den Aufrufer-Scope re-exportiert, aber nie gelesen | keiner — Rest der entfernten Meldung „No files found." (siehe „Stiller Leerlauf") |
+| Z. 263–264, 371–374 | `CROP_L`/`CROP_R` werden gesetzt, nie gelesen; zusätzlich Bug: `for /f "tokens=1,3"` bindet nur `%%A`/`%%B`, `%%C` ist ungebunden → `CROP_R` = Literal `%C` (2026-11-25 experimentell verifiziert) | aktuell keiner; latent falsche Werte, falls später genutzt |
+| Z. 597 | `:EDIT_TAGS_CLEANUP` wird nie angesprungen (nur Fallthrough von Z. 595) | toter Labelname; Cleanup-Code Z. 598–600 lebt |
+| Z. 530, 675 | `set /a E=E` — Selbstzuweisung ohne Wirkung | keiner |
+| Z. 382 | `if not "!CROP!"=="--crop 0,0,0,0"` kann nie falsch sein (der String entsteht nur im AUTO-Pfad, der hier ausgeschlossen ist) | keiner |
+| Z. 492 | `if /i "!SEEK_ARG!"=="seek"` unerreichbar (Z. 19–22 schreibt jeden `seek`-Wert vorher in `seek=<…>` um) | keiner |
+| Z. 645 | `if defined FF_STREAMS` immer wahr (Z. 619/620 haben das schon bewiesen) | keiner |
+| Z. 262, 366–367 | `RESIZE_PARAM`/`RESIZE_REQUIRED`-Resets, die Z. 400 unmittelbar überschreibt (kein Reader dazwischen) | keiner; `RESIZE_PARAM` selbst ist **lebend** (siehe D letzter Punkt) |
+| Z. 15–16, 830–834 | `DEBUG` hart `0` → `set "DBG=call :DEBUG"` unerreichbar, `:DEBUG` toter Label; alle **47** `%DBG%`-Stellen rufen `:NOP` | **bewusst** (Env-Override gewollt) — nur dokumentiert, nicht entfernen |
+
+### B) Funktional toter Kanal — Ausgabe ohne Konsument
+
+| Stelle | Befund |
+|---|---|
+| Z. 668/684/696 → PS Z. 846, 850–853, 898, 946 | `PS_STATUS_FILE` wird vom Probe-Skript per `Write-Status "REJECTED: …"` beschrieben, vom Batch **nie gelesen** und in Z. 696 gelöscht. Die berechneten Ablehnungsgründe („vertical asymmetry", „source too small", „one-sided vertical crop", …) erreichen den User nie — sichtbar ist nur „Probe failed or source too small". Entscheidung nötig: anzeigen oder Kanal entfernen. |
+| PS Z. 891 | `$ExitCode = 2` wird nie als Exitcode 2 zurückgegeben: der folgende Reject-Pfad (PS Z. 894–900) endet immer mit `exit 8`. |
+
+### C) Verwaist / Duplikate (kein toter Code im engeren Sinne)
+
+| Stelle | Befund |
+|---|---|
+| Z. 772–773 | `if defined CALLER_NAME` — `CALLER_NAME` wird im Repo und in den Aufrufern (`encode-all.cmd` ruft direkt auf) nirgends gesetzt; externer Hook oder Rest eines alten Launchers |
+| Z. 322 + 388 | identischer PowerShell-URL-Print zweimal (beide Pfade lebend — D4/D6 akzeptiert, nur das Duplikat fällt auf) |
+| Z. 299 + 306 | identische Bedingung `x!INNAME:~-4!==x.mkv` zweimal ausgewertet |
+| Z. 252 | `if exist "%%I"` im `for`-Loop tautologisch (FOR liefert nur existierende Dateien) |
+| Z. 176/181, 177/182, 179/185, 180/186, 228/229 | Alias-Tokens mit identischem Kommando (`artifact`≡`vsrDenoise`, `artifactHQ`≡`vsrDenoiseHQ`, `vsrArtifact`≡`vsrDetailRestore`, `vsrArtifactHQ`≡`vsrDetailRestoreHQ`, `dv`≡`dolby-vision`) |
+| 18 Branches | wiederholen exakt die Default-Zuweisung (No-Op): Z. 91/92, 105, 117, 157–162, 167, 193–198, 203, 234–235, 242–243 — für die Token-Validierung nötig, im Code wirkungslos |
+
+### D) Bewusst so — NICHT entfernen / nicht erneut melden
+
+- `%DBG%`-Instrumentierung (47 Stellen) + `:DEBUG`/`:NOP`: Debug-Facility, per `set "DEBUG=1"` im Skript aktivierbar (bewusst vor Env-Override geschützt).
+- `c1`–`c6` (SETCROP) und `f1`–`f6` (SETFILTER): reservierte User-Slots, setzen bewusst nichts.
+- `EDIT_TAGS` als Konstante `1` (Z. 14; Guards Z. 325/423): Kill-Switch per Datei-Edit.
+- Akzeptierte Design-Punkte D1–D8 (oben), insbesondere AV1→`SETQUALITY-HEVC`, 5-s-Wartezeit, URL-Prints, `$Top`/`$Bottom`, CMDPATH-Pfade.
+- **`--vpp-resize spline36`-Injektion (Z. 401–403) ist NICHT tot:** `RESIZE_PARAM` hat genau einen Writer (Z. 402) und einen Reader (Z. 409); der Pfad ist erreichbar (z. B. `hevc ac3 def 720 none` → `CROP=--output-res 1280x-2`, `FILTER_HAS_RESIZE=0`). nvencc-Default für `--vpp-resize` ist `algo=auto` — die Injektion pinnt also `spline36`. Tote Reste sind nur die Resets Z. 262/366–367.
+
+### E) Geprüft und NICHT tot (damit es nicht erneut auftaucht)
+
+- PS-Blöcke Z. 839–1050 (RUN_PROBE/EDIT_TAGS): für cmd „toter Text", werden aber per `findstr`-Marker extrahiert und als `.ps1` ausgeführt → **Datenquelle**.
+- `:PARAM_ERROR` (504), `:BRANCH_BROKEN` (623), `:BRANCH_HEALTHY` (644), `:PROBE_OK` (703), `:NOP` (823), `:GET_ARG10` (465), `:USAGE` (764): über `goto`/`%DBG%` erreichbar. `:INIT` (3) ist der Einstiegspunkt ohne Sprungziel — kein toter Label.
+- `TOK_*`-Variablen: indirekte Reads in Z. 442 (`!%2!`) und Z. 740 (`!%TOKVAR%!`) — eine naive „nie gelesen"-Suche ist ein False Positive.
+- `SKIP_FILE`-Guard Z. 399: kein Duplikat von Z. 329 — Z. 360 setzt das Flag zwischenzeitlich.
+- Keine dynamischen Labelsprünge (`call :%X%` = 0 Treffer), keine doppelten Labels, alle `goto`-Ziele existieren, kein auskommentierter Code (4 `REM`-Zeilen = Kommentare), keine unerreichbaren Fallthrough-Blöcke.
+- Token-Mapping vollständig: 127/127 in den 1:1-Tabellen (QUALITY/SEEK prozedural; Details im Dry-Run-Abschnitt).
+
+### F) Re-Verifikation
+
+Mechanisch prüfbar (PowerShell, read-only): Labels (`^\s*:NAME`) gegen `call`/`goto`-Ziele; `set`-Ziele gegen `%X%`, `!X!`, `!X:~…!`, `defined X`, indirekte Reads; `TOK_*`-Listen gegen `if /i "%n"=="…"`-Branches; `%DBG%` gegen `:NOP`; PS-Marker-Bereiche als lebende Datenquelle behandeln. Bei Änderungen am Wrapper: dieses Kapitel fortschreiben, nicht stillschweigend löschen.
+
+**Empfohlene Aufräum-Reihenfolge** (klein → groß): `set /a E=E` → `FOUND` → Label `:EDIT_TAGS_CLEANUP` → die drei toten Bedingungen (Z. 382/492/645) → `CROP_L`/`CROP_R` → `PS_STATUS_FILE` (erst nach Entscheidung: anzeigen vs. entfernen). `%DBG%`/`:DEBUG` bleibt.
+
 ## Konventionen für Erweiterungen
 
-Bei Änderungen oder Erweiterungen an `nvencc64_wrapper.cmd` **oder** `ffmpeg_wrapper.cmd` (siehe vorheriger Abschnitt — beide müssen synchron gehalten werden):
+Bei Änderungen oder Erweiterungen an `nvencc64_wrapper.cmd` **oder** `ffmpeg_wrapper.cmd` (Steuerlogik und Fixes werden synchron gehalten; **die Token-Tabellen sind seit 2026-11-25 divergiert** — siehe ffmpeg-Abschnitt):
 
-- **Token-Validierung erweitern?** Jedes neue Token muss in **beide** Listen: `TOK_*` in `:SETTOKEN` (Z. 703) und als `if`-Branch in der entsprechenden `:SETxxx`-Routine.
-- **Neue Filter/Mode-Tokens mit Resize?** Prüfe, ob die Ausgabe `--vpp-resize` enthält — die Erkennung in Z. 22–29 steuert, ob ein zusätzliches `--vpp-resize spline36` injiziert wird. Bei true sollte der Token dort nicht doppelt resize hinzufügen.
+- **Token-Validierung erweitern?** Jedes neue Token muss in **beide** Listen: `TOK_*` in `:SETTOKEN` (nvencc Z. 810) und als `if`-Branch in der entsprechenden `:SETxxx`-Routine.
+- **Neue Filter/Mode-Tokens mit Resize?** Prüfe, ob die Ausgabe `--vpp-resize` enthält — die Erkennung in Z. 31–38 (`FILTER_HAS_RESIZE`) steuert, ob ein zusätzliches `--vpp-resize spline36` injiziert wird (Z. 401–403). Bei true sollte der Token dort nicht doppelt resize hinzufügen.
 - **Neue Encoder?** Analog zu AV1 entweder explizit auf `SETQUALITY-HEVC` mappen (mit Kommentar warum) oder eigene `:SETQUALITY-<NAME>`-Routine schreiben.
-- **Neue PS-Sub-Skripte?** Marker-Format `#PS_<NAME>_BEGIN#` / `#PS_<NAME>_END#` verwenden, Block am Ende der `.cmd` anhängen, Extraction-Logik aus `:EDIT_TAGS` (Z. 411) oder `:RUN_PROBE` (Z. 564) kopieren.
+- **Neue PS-Sub-Skripte?** Marker-Format `#PS_<NAME>_BEGIN#` / `#PS_<NAME>_END#` verwenden, Block am Ende der `.cmd` anhängen, Extraction-Logik aus `:EDIT_TAGS` (nvencc Z. 509) oder `:RUN_PROBE` (nvencc Z. 658) kopieren.
 - **Neue Branches in :REMUX_IF_NEEDED?** `goto` verwenden, nicht `if`-Klammern (siehe Hinweis in Aktive Fixes #3).
+- **Nach jeder Änderung an einer `.cmd`: sofort nach `%CMDPATH%\bin\` syncen** (`.___PUSH___.cmd` oder `xcopy "*.cmd" "%CMDPATH%\bin\" /y`) — nicht optional, siehe Deployment-Abschnitt.
+- **Toter Code?** Vor dem Entfernen den Abschnitt „Toter Code — Kandidatenliste" prüfen; neue Funde dort mit Zeilenbeleg und Datum eintragen, statt sie nur im Chat zu erwähnen.
 
 ## Meldungen, Pipeline & Deployment (Stand 2026-11-12)
 
@@ -156,7 +237,7 @@ Bei Änderungen oder Erweiterungen an `nvencc64_wrapper.cmd` **oder** `ffmpeg_wr
 - **Alte Pipeline entfernt**: `sort-all.cmd` gelöscht; die Starter `_1_sort.cmd`, `_2_encode.cmd`, `_3_move.cmd` (in `%CMDPATH%\bin\scripts\`) gelöscht; `encode-edit.cmd` gelöscht (referenzierte das gelöschte `sort-all.cmd`). Der Workflow läuft über `clean-all` / `encode-all` / `move-all`.
 - **README.md** erweitert: neuer Abschnitt „Hilfsskripte im `bin`" (encode-all, move-all inkl. Serien-Heuristik/`.checked`-Wegfall, clean-all inkl. `:ProcessCopy`-Warnung), Features-Bullet „Hilfsskripte", Arbeitsablauf-Punkt 4 (Savings) präzisiert; Hinweis auf entfernte Pipeline/Lean-Meldungen.
 - **Repo vs. `bin`**: Das Repo enthält die sanitisierte Version von `nvencc64_wrapper.cmd`. **Custom Crops und Filter (`cX`/`fX`) sind nicht zu beachten** — private Token-Werte im `bin` (`smooth`, `nlmeans`, `f1`–`f3` mit eigenen `--vpp-*`-Ketten, z. B. realesrgan/msmooth/chromashift) sind nur temporär, jederzeit zurücksetzbar und werden nicht benötigt. `.___PUSH___.cmd` überschreibt `bin` direkt; kein Sichern/Zurückspielen.
-- **Deployment**: `.___PUSH___.cmd` aus dem Repo-Root (xcopy `*.cmd` → `%CMDPATH%\bin`, `git add .`, Commit „Updates", `git push`). `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd` sind von der Kopie ausgeschlossen.
+- **Deployment — Pflichtschritt nach jeder Wrapper-Änderung**: `.___PUSH___.cmd` aus dem Repo-Root (xcopy `*.cmd` → `%CMDPATH%\bin`, `git add .`, Commit „Updates", `git push`). **Jede Änderung an `*.cmd` wird unmittelbar nach `%CMDPATH%\bin\` gesynct** — der Alltags-Workflow ruft ausschließlich die `bin`-Kopien auf (Wrapper, `encode-all`, `move-all`, `clean-all`), eine nur im Repo geänderte Datei ist dort unsichtbar. Reiner Sync ohne Commit/Push: `xcopy "*.cmd" "%CMDPATH%\bin\" /y /exclude:exclude.txt` (exclude.txt = `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd`, wie im Skript). `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd` sind von der Kopie ausgeschlossen. **Stand 2026-11-25:** Repo und `bin` sind aktuell: `nvencc64_wrapper.cmd` (1050 Zeilen, inkl. 1772) und `ffmpeg_wrapper.cmd` (1004 Zeilen, Commit `83c3e74`) sind jeweils hash-identisch mit ihren `bin`-Kopien; ebenso `clean-all`, `move-all`, `encode-all`.
 
 ## Abbruch-/CTRL+C-Sicherheit (Stand 2026-11-13)
 
@@ -166,7 +247,7 @@ Bei CTRL+C während der Konvertierung bleiben keine unvollständigen Dateien unt
 - **Fehlerpfad**: Bei Encoder-Fehler/Abbruch wird die Teil-Ausgabe **gelöscht**, eine WARNUNG ausgegeben und die **Quelle bleibt stehen** (`WARNING: Encoding failed or cancelled. Source not moved.`). Kein `_Check`-Move.
 - **Exitcode-Auswertung**: Nicht mehr `if errorlevel 1`, sondern `set "RC=!ERRORLEVEL!"` + `if not "!RC!"=="0"` — damit wird **jeder** Code ≠ 0 als Fehler/Abbruch erkannt, auch der CTRL+C-Status `0xC000013A` (als `-1073741510`). Vorher wurde ein Abbruch mit negativem Exitcode übersehen (Teil-Datei wurde dann als final umbenannt).
 - **`_Check` bleibt** ausschließlich für echte **Vorprüf-Fehler**: „Could not detect codec", „Probe failed or source too small" (beide unverändert).
-- **Aufräumen beim Start**: `MAIN` löscht alte `_Converted\*.part.*`-Reste (Rest einer „Terminate batch job"-Beendigung).
+- **Aufräumen beim Start**: `MAIN` löscht alte `_Converted\*.part.mkv`-Reste (Rest einer „Terminate batch job"-Beendigung); Z. 249.
 - **Betroffen**: `nvencc64_wrapper` (Encode + mkvmerge-Re-Mux), `ffmpeg_wrapper` (im FFmpeg_Wrapper-Repo), `ffmpeg_avs`, `ffmpeg_audio_converter`, `ffmpeg_video_converter`, `cube`, `clut`.
 
 ## Rollback: Version ohne Part-Handling

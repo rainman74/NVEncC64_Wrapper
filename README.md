@@ -114,7 +114,7 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 | `2160f` | 3840x2160 (fest) |
 
 **Letterbox-Standards (1920x1080 Basis mit horizontalem Crop):**
-`1348`, `1408`, `1420`, `1440`, `1480`, `1500`, `1620`, `1764`, `1780`, `1788`, `1792`, `1800`
+`1348`, `1408`, `1420`, `1440`, `1480`, `1500`, `1620`, `1764`, `1772`, `1780`, `1788`, `1792`, `1800`
 
 **Aliase (alle = kein Crop):** `c1`, `c2`, `c3`, `c4`, `c5`, `c6`
 

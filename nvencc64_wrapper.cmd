@@ -149,6 +149,7 @@ if /i "%4"=="1480"                  (set "CROP=--crop 220,0,220,0 --output-res 1
 if /i "%4"=="1500"                  (set "CROP=--crop 210,0,210,0 --output-res 1500x1080")
 if /i "%4"=="1620"                  (set "CROP=--crop 150,0,150,0 --output-res 1620x1080")
 if /i "%4"=="1764"                  (set "CROP=--crop 78,0,78,0 --output-res 1764x1080")
+if /i "%4"=="1772"                  (set "CROP=--crop 74,0,74,0 --output-res 1772x1080")
 if /i "%4"=="1780"                  (set "CROP=--crop 70,0,70,0 --output-res 1780x1080")
 if /i "%4"=="1788"                  (set "CROP=--crop 66,0,66,0 --output-res 1788x1080")
 if /i "%4"=="1792"                  (set "CROP=--crop 64,0,64,0 --output-res 1792x1080")
@@ -810,7 +811,7 @@ exit /b
 set "TOK_ENCODER=def hevc he10 h264 av1"
 set "TOK_AUDIO=copy copy1 copy2 copy12 copy23 ac3 aac aacs eac3"
 set "TOK_QUALITY=def auto hq uhq lq ulq"
-set "TOK_CROP=none auto 43 169 696 752 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1440f 1348 1408 1420 1480 1500 1620 1764 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
+set "TOK_CROP=none auto 43 169 696 752 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1440f 1348 1408 1420 1480 1500 1620 1764 1772 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
 set "TOK_FILTER=none edgelevel smooth nlmeans gauss bm3d sharp denoise denoiseHQ artifact artifactHQ vsr vsrArtifact vsrArtifactHQ vsrDenoise vsrDenoiseHQ vsrDeBlur vsrDeBlurHQ vsrDetailRestore vsrDetailRestoreHQ vsrStream vsrStreamHQ deHalo deHalo2 vhsRestore log f1 f2 f3 f4 f5 f6"
 set "TOK_MODE=none deint ivtc rtgmc rtgmcp double framegen framegen4 framegen8 framegenHQ 23fps 25fps 30fps 60fps 29fps 59fps lighter darker vintage linear tweak hdrToSDR hdrToSDRR hdrToSDRM hdrToSDRH dv dolby-vision"
 set "TOK_DECODER=def hw sw auto"
@@ -878,7 +879,7 @@ $StandardResolutions = @{
      40 = @{ Crop="0:20:0:20";   Res="1920x1040" }
       0 = @{ Crop="0:0:0:0";     Res="1920x1080" }
 }
-$StandardWidths = @(1800,1792,1788,1780,1764,1500,1620,1480,1440,1420,1408,1348)
+$StandardWidths = @(1800,1792,1788,1780,1772,1764,1500,1620,1480,1440,1420,1408,1348)
 $ffmpegCmd = (get-command ffmpeg.exe).source
 $ffprobeCmd = (get-command ffprobe.exe).source
 $ProbeTimes = @("00:02:00","00:10:00","00:20:00")
