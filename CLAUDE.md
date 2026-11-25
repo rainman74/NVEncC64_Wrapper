@@ -2,7 +2,7 @@
 
 Wrapper-Skript für `nvencc64.exe` (NVIDIA Hardware-Encoder). Hauptsächlich eine `.cmd`-Datei plus zugehörige Hilfs-Skripte.
 
-> **Dokument-Stand: 2026-11-25.** Abgleich gegen den Repo-Code: `nvencc64_wrapper.cmd` = 1050 Zeilen (Commit `5c34ad0` + 1772-Ergänzung, noch nicht committed); `ffmpeg_wrapper.cmd` = 1004 Zeilen, Commit `83c3e74` (Schwester-Repo `D:\Sources\FFmpeg_Wrapper`). **Alle Zeilenangaben in diesem Dokument beziehen sich auf diesen Stand** — bei Code-Änderungen Zeilenangaben mitpflegen (oder Abschnitt „Toter Code" als Referenz nutzen, dort steht das Prüfverfahren).
+> **Dokument-Stand: 2026-11-25.** Abgleich gegen den Repo-Code: `nvencc64_wrapper.cmd` = 1050 Zeilen (Commit `b340600`; Basis `5c34ad0` + 1772-Ergänzung); `ffmpeg_wrapper.cmd` = 1004 Zeilen, Commit `83c3e74` (Schwester-Repo `D:\Sources\FFmpeg_Wrapper`). **Alle Zeilenangaben in diesem Dokument beziehen sich auf diesen Stand** — bei Code-Änderungen Zeilenangaben mitpflegen (oder Abschnitt „Toter Code" als Referenz nutzen, dort steht das Prüfverfahren).
 >
 > **Korrekturen 2026-11-25 (Doku-Drift beseitigt):** Pfad-Setup (Z. 7–9 nutzt `%CMDPATH%\bin\nvvfx_models`, nicht `NVVFX_MODEL_DIR`), Zeilennummern in Fixes-Tabelle/D1–D6/Konventionen, Token-Naming in SETCROP (kein `c`-Präfix), SETCROP-Semantik (teils Crop + Resize, nicht „nur Resize"), Token-Zahl (134 statt 125), `cmd /c`-Subshell-Aussage, ffmpeg_wrapper-Divergenz. **Nachtrag:** `1772` als horizontale Standardbreite + Crop-Token in beiden Wrappern (nvencc Z. 152/814/882; Auto-Erkennung funktional getestet); ffmpeg-Baseline auf `83c3e74`/1004 Zeilen aktualisiert.
 
@@ -78,7 +78,7 @@ Diese Fixes sind in **beide** Wrapper (`nvencc64_wrapper.cmd` und `ffmpeg_wrappe
 | 5 | SETCROP-Tokens: explizite Crop-/Resize-Ketten | Z. 111–163                 | Z. 96–146                   |
 | 6 | ffmpeg-AQ-Optionen: Bindestrich statt Unterstrich | (n/a — nvencc)        | Z. 401                       |
 
-> Die früher hier genannten Nummern (nvencc: 940/411–499/504/279+361/270–296/107–150; ffmpeg: 997/451–539/544/298+407/286–321/419) stammten von älteren Dateiständen und sind damit überholt. Stand 2026-11-25: nvencc 1050 Zeilen (Commit `5c34ad0` + 1772-Ergänzung), ffmpeg 1004 Zeilen (Commit `83c3e74`).
+> Die früher hier genannten Nummern (nvencc: 940/411–499/504/279+361/270–296/107–150; ffmpeg: 997/451–539/544/298+407/286–321/419) stammten von älteren Dateiständen und sind damit überholt. Stand 2026-11-25: nvencc 1050 Zeilen (Commit `b340600`), ffmpeg 1004 Zeilen (Commit `83c3e74`).
 
 Im Detail:
 
@@ -162,7 +162,7 @@ Gemeinsam sind Struktur und Fixes #1–#4 — die Token-Tabellen nicht. Kein sep
 
 ## Toter Code — Kandidatenliste (Stand 2026-11-25)
 
-Systematische Dead-Code-Prüfung von `nvencc64_wrapper.cmd` (1050 Zeilen, Commit `5c34ad0` + 1772-Ergänzung). Geprüft: alle Labels gegen `call`/`goto`-Ziele (dynamischer Dispatch: **keiner**), alle `set`-Ziele gegen Reads (`%X%`, `!X!`, `!X:~…!`, `defined X`, indirekte Reads `!%TOK%!`), Token-Listen gegen Branches, `REM`-Zeilen, Code nach bedingungslosen Sprüngen, doppelte Labels, PS-Blöcke. **Ergebnis: 9 belegte Dead-Code-Stellen** — bis auf den Diagnose-Kanal (B) ohne Verhaltenswirkung. Nichts davon ist entfernt; das ist die Arbeitsliste für später. Alle Zeilenangaben = Stand oben; nach Wrapper-Änderungen neu verifizieren (Verfahren unter F).
+Systematische Dead-Code-Prüfung von `nvencc64_wrapper.cmd` (1050 Zeilen, Commit `b340600`). Geprüft: alle Labels gegen `call`/`goto`-Ziele (dynamischer Dispatch: **keiner**), alle `set`-Ziele gegen Reads (`%X%`, `!X!`, `!X:~…!`, `defined X`, indirekte Reads `!%TOK%!`), Token-Listen gegen Branches, `REM`-Zeilen, Code nach bedingungslosen Sprüngen, doppelte Labels, PS-Blöcke. **Ergebnis: 9 belegte Dead-Code-Stellen** — bis auf den Diagnose-Kanal (B) ohne Verhaltenswirkung. Nichts davon ist entfernt; das ist die Arbeitsliste für später. Alle Zeilenangaben = Stand oben; nach Wrapper-Änderungen neu verifizieren (Verfahren unter F).
 
 ### A) Definitiv tot — risikofrei entfernbar
 
