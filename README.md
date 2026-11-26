@@ -6,7 +6,7 @@ Batch-Videotranscoding-Wrapper für [NVEncC64](https://github.com/rigaya/NVEnc) 
 
 - **Auto-Crop** — Ermittelt schwarze Balken per `ffmpeg cropdetect` an 3 relativen Zeitpunkten (15/45/75 % der Laufzeit) und rastet auf Standard-Auflösungen ein (Full-HD- und HD-Tabellen; **kein freier Beschnitt** — außerhalb der Toleranz → `_Check`)
 - **Auto-Quality** — Wählt Qualitätsstufe anhand des Jahrzehnts im Dateinamen (`(19xx)` = hq, `(20xx)` = def)
-- **Auto-Skip** — Bereits im Zielcodec vorliegende Dateien werden ohne Neukodierung verschoben; in `nvencc64_wrapper2.cmd` werden abweichende Audiospuren vorher per FFmpeg neu encodet (Video bleibt `copy`)
+- **Auto-Skip** — Bereits im Zielcodec vorliegende Dateien werden ohne Neukodierung verschoben; abweichende Audiospuren werden vorher per FFmpeg neu encodet (Video bleibt `copy`)
 - **Audio-Encoding** — AC3, AAC, E-AC3 oder direkte Kopie (auch selektive Streams)
 - **VPP-Filter** — Denoise, Sharpening, Super-Resolution, VSR, Deinterlacing, HDR→SDR u.v.m.
 - **VHS-Restore** — Feldreparatur + Deinterlacing für VHS-Captures (`vhsRestore`, ONNX-Modell PAL/SECAM)
@@ -40,7 +40,7 @@ Im Arbeitsverzeichnis werden `*.mkv`, `*.mp4`, `*.mpg`, `*.mov`, `*.avi`, `*.web
 nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [chkenc] [seek=<hh:mm:ss.ms>]
 ```
 
-> **HD-Variante:** `nvencc64_wrapper2.cmd` ist die erweiterte Fassung für gemischtes Material (Full-HD **und** `1280x720`, inklusive nativ gecroppter Derivate wie `1280x536`, `960x720` oder `1440x1080`). Aufruf identisch. Der Auto-Crop rastet dort strikt auf die 1080p- bzw. 720p-Standardtabellen ein; Messwerte außerhalb der Toleranz führen zu `REJECTED` (Datei nach `_Check`), es wird **kein** freier Beschnitt berechnet. Der konkrete Ablehnungsgrund erscheint auf der Konsole. Bei `auto` + VSR-Filter warnt der Wrapper, dass NVEncC bei 1:1-Zielauflösung auf bicubic zurückfällt. Der Default-Decoder `hw` funktioniert auch bei Links-Crop (Pillarbox) — in NVEncC 9.41 verifiziert.
+> **Hinweis (2026-11-27):** `nvencc64_wrapper.cmd` ist die erweiterte Fassung für gemischtes Material (Full-HD **und** `1280x720`, inklusive nativ gecroppter Derivate wie `1280x536`, `960x720` oder `1440x1080`). Aufruf identisch. Der Auto-Crop rastet dort strikt auf die 1080p- bzw. 720p-Standardtabellen ein; Messwerte außerhalb der Toleranz führen zu `REJECTED` (Datei nach `_Check`), es wird **kein** freier Beschnitt berechnet. Der konkrete Ablehnungsgrund erscheint auf der Konsole. Bei `auto` + VSR-Filter warnt der Wrapper, dass NVEncC bei 1:1-Zielauflösung auf bicubic zurückfällt. Der Default-Decoder `hw` funktioniert auch bei Links-Crop (Pillarbox) — in NVEncC 9.41 verifiziert. Die frühere Basis-Fassung liegt in `.backup/` bzw. in der Git-Historie (Commit `cd68482`).
 
 | Pos | Parameter | Default | Beschreibung |
 |-----|-----------|---------|--------------|
@@ -118,10 +118,10 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 **Letterbox-Standards (1920x1080 Basis mit horizontalem Crop):**
 `1348`, `1408`, `1420`, `1440`, `1480`, `1500`, `1620`, `1764`, `1772`, `1780`, `1788`, `1792`, `1800`
 
-**HD-Letterbox-Standards (Basis `1280x720`, nur 720p-Quellen — nur in `nvencc64_wrapper2.cmd`):**
+**HD-Letterbox-Standards (Basis `1280x720`, nur 720p-Quellen — HD/Full-HD-Fassung):**
 `h692`, `h640`, `h580`, `h544`, `h536`, `h464` (Crop-only; ergibt `1280x692` … `1280x464`)
 
-**HD-Pillarbox-Standards (Basis `1280x720`, nur 720p-Quellen — nur in `nvencc64_wrapper2.cmd`):**
+**HD-Pillarbox-Standards (Basis `1280x720`, nur 720p-Quellen — HD/Full-HD-Fassung):**
 `h960`, `h988`, `h1080`, `h1196` (`--crop` + `--output-res`; ergibt `960x720` … `1196x720`)
 
 **Aliase (alle = kein Crop):** `c1`, `c2`, `c3`, `c4`, `c5`, `c6`
@@ -221,11 +221,11 @@ Der Auto-Crop (`crop=auto`) funktioniert folgendermaßen:
 3. **Mapping**: Der ermittelte vertikale oder horizontale Beschnitt wird strikt auf Standard-Auflösungen gemappt (Full-HD- und HD-Tabellen; kein freier Beschnitt — Über-Crop max. 4 px, Unter-Crop max. 8 px)
 4. **Validierung & Rejects**: Bei Asymmetrie, Windowbox, anamorphem Material oder Abweichungen außerhalb der Snap-Toleranz wird die Datei samt konkretem Grund auf der Konsole nach `_Check/` verschoben
 
-Die HD-Tabellen (`1280x720`-Basis) gelten nur in `nvencc64_wrapper2.cmd`; `nvencc64_wrapper.cmd` nutzt die Full-HD-Tabellen.
+Die HD-Tabellen (`1280x720`-Basis) sind in `nvencc64_wrapper.cmd` aktiv; Full-HD-Quellen nutzen weiterhin die Full-HD-Tabellen.
 
-## Audio-Reencode bei bereits kodiertem Video (nur `nvencc64_wrapper2.cmd`)
+## Audio-Reencode bei bereits kodiertem Video
 
-Liegt der Videostream bereits im Zielcodec vor (`CHECK_ENCODED=1`), prüft `nvencc64_wrapper2.cmd` zusätzlich die Audiospuren:
+Liegt der Videostream bereits im Zielcodec vor (`CHECK_ENCODED=1`), prüft `nvencc64_wrapper.cmd` zusätzlich die Audiospuren:
 
 - **`copy`/`copy1`/`copy2`/`copy12`/`copy23`** (kein Ziel-Audio-Codec): unverändertes Verschieben nach `_Converted`, Track-Filter werden ignoriert.
 - **`ac3`/`aac`/`aacs`/`eac3`** (oder leer): Sind alle Audiospuren bereits konform (bzw. enthält die Datei gar kein Audio), wird wie bisher verschoben. Weicht mindestens eine Spur ab, wird die Quelldatei **nicht** verschoben und **nicht** gelöscht; stattdessen erzeugt `ffmpeg` die Ausgabe mit `-c:v copy`:
@@ -264,7 +264,7 @@ Aktiviert detaillierte Ausgabe der Crop-Erkennung, NVEnc-Parameter und Zwischene
 - **Unbekannter Codec** → Datei wird nach `_Check/` verschoben (nicht bei `*.avs` – dort entfällt die Codec-Erkennung)
 - **Crop-Probe fehlgeschlagen** → Datei wird nach `_Check/` verschoben (bei `*.avs`: Warnung, Weiterkodierung ohne Crop)
 - **Asymmetrische schwarze Balken** → Datei wird nach `_Check/` verschoben
-- **Quelle zu klein** (< 1280×696, in `nvencc64_wrapper2.cmd`: < 960×464) → Datei wird nach `_Check/` verschoben
+- **Quelle zu klein** (< 960×464; frühere Basis-Fassung: < 1280×696) → Datei wird nach `_Check/` verschoben
 - **Tag-Edit fehlgeschlagen** → Datei wird nach `_Check/` verschoben
 
 ## Hilfsskripte im `bin`

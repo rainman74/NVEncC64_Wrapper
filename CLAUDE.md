@@ -2,7 +2,7 @@
 
 Wrapper-Skript für `nvencc64.exe` (NVIDIA Hardware-Encoder). Hauptsächlich eine `.cmd`-Datei plus zugehörige Hilfs-Skripte.
 
-> **Dokument-Stand: 2026-11-25 (Review-Nachtrag 2026-11-27).** Abgleich gegen den Repo-Code: `nvencc64_wrapper.cmd` = 1050 Zeilen (Commit `b340600`; Basis `5c34ad0` + 1772-Ergänzung); `ffmpeg_wrapper.cmd` = 1004 Zeilen, Commit `83c3e74` (Schwester-Repo `D:\Sources\FFmpeg_Wrapper`); `nvencc64_wrapper2.cmd` = 1267 Zeilen (HD/Full-HD-Extension, Stand 2026-11-27). **Alle Zeilenangaben in diesem Dokument beziehen sich auf diesen Stand** — bei Code-Änderungen Zeilenangaben mitpflegen (oder Abschnitt „Toter Code" als Referenz nutzen, dort steht das Prüfverfahren).
+> **Dokument-Stand: 2026-11-27 (Umbenennung).** Abgleich gegen den Repo-Code: `nvencc64_wrapper.cmd` = 1267 Zeilen (HD/Full-HD-Fassung, Stand 2026-11-27; vormals `nvencc64_wrapper2.cmd`; frühere Basis-Fassung = 1050 Zeilen in `.backup/` bzw. Commit `cd68482`); `ffmpeg_wrapper.cmd` = 1004 Zeilen, Commit `83c3e74` (Schwester-Repo `D:\Sources\FFmpeg_Wrapper`). **Alle Zeilenangaben in diesem Dokument beziehen sich auf diesen Stand** — bei Code-Änderungen Zeilenangaben mitpflegen (oder Abschnitt „Toter Code" als Referenz nutzen, dort steht das Prüfverfahren).
 >
 > **Korrekturen 2026-11-25 (Doku-Drift beseitigt):** Pfad-Setup (Z. 7–9 nutzt `%CMDPATH%\bin\nvvfx_models`, nicht `NVVFX_MODEL_DIR`), Zeilennummern in Fixes-Tabelle/D1–D6/Konventionen, Token-Naming in SETCROP (kein `c`-Präfix), SETCROP-Semantik (teils Crop + Resize, nicht „nur Resize"), Token-Zahl (134 statt 125), `cmd /c`-Subshell-Aussage, ffmpeg_wrapper-Divergenz. **Nachtrag:** `1772` als horizontale Standardbreite + Crop-Token in beiden Wrappern (nvencc Z. 152/814/882; Auto-Erkennung funktional getestet); ffmpeg-Baseline auf `83c3e74`/1004 Zeilen aktualisiert.
 
@@ -228,7 +228,7 @@ Bei Änderungen oder Erweiterungen an `nvencc64_wrapper.cmd` **oder** `ffmpeg_wr
 - **Neue Encoder?** Analog zu AV1 entweder explizit auf `SETQUALITY-HEVC` mappen (mit Kommentar warum) oder eigene `:SETQUALITY-<NAME>`-Routine schreiben.
 - **Neue PS-Sub-Skripte?** Marker-Format `#PS_<NAME>_BEGIN#` / `#PS_<NAME>_END#` verwenden, Block am Ende der `.cmd` anhängen, Extraction-Logik aus `:EDIT_TAGS` (nvencc Z. 509) oder `:RUN_PROBE` (nvencc Z. 658) kopieren.
 - **Neue Branches in :REMUX_IF_NEEDED?** `goto` verwenden, nicht `if`-Klammern (siehe Hinweis in Aktive Fixes #3).
-- **Auto-Crop-Schwellen?** Immer als geschlossene Partition der Messwerte definieren (Passthrough/Windowbox/Pillarbox/Letterbox) und die Grenzwerte ±1 px testen — siehe Review-Lehre in der Wrapper2-Sektion.
+- **Auto-Crop-Schwellen?** Immer als geschlossene Partition der Messwerte definieren (Passthrough/Windowbox/Pillarbox/Letterbox) und die Grenzwerte ±1 px testen — siehe Review-Lehre in der HD/Full-HD-Sektion.
 - **Reject-/Diagnosemeldungen?** Nie in einer Datei versanden lassen: Grund bis zur Konsole propagieren (`Set-Reject` → `PROBE_REASON` → `:MAIN`-WARNING) und im Batch testen.
 - **Nach jeder Änderung an einer `.cmd`: sofort nach `%CMDPATH%\bin\` syncen** (`.___PUSH___.cmd` oder `xcopy "*.cmd" "%CMDPATH%\bin\" /y`) — nicht optional, siehe Deployment-Abschnitt.
 - **Toter Code?** Vor dem Entfernen den Abschnitt „Toter Code — Kandidatenliste" prüfen; neue Funde dort mit Zeilenbeleg und Datum eintragen, statt sie nur im Chat zu erwähnen.
@@ -239,7 +239,7 @@ Bei Änderungen oder Erweiterungen an `nvencc64_wrapper.cmd` **oder** `ffmpeg_wr
 - **Alte Pipeline entfernt**: `sort-all.cmd` gelöscht; die Starter `_1_sort.cmd`, `_2_encode.cmd`, `_3_move.cmd` (in `%CMDPATH%\bin\scripts\`) gelöscht; `encode-edit.cmd` gelöscht (referenzierte das gelöschte `sort-all.cmd`). Der Workflow läuft über `clean-all` / `encode-all` / `move-all`.
 - **README.md** erweitert: neuer Abschnitt „Hilfsskripte im `bin`" (encode-all, move-all inkl. Serien-Heuristik/`.checked`-Wegfall, clean-all inkl. `:ProcessCopy`-Warnung), Features-Bullet „Hilfsskripte", Arbeitsablauf-Punkt 4 (Savings) präzisiert; Hinweis auf entfernte Pipeline/Lean-Meldungen.
 - **Repo vs. `bin`**: Das Repo enthält die sanitisierte Version von `nvencc64_wrapper.cmd`. **Custom Crops und Filter (`cX`/`fX`) sind nicht zu beachten** — private Token-Werte im `bin` (`smooth`, `nlmeans`, `f1`–`f3` mit eigenen `--vpp-*`-Ketten, z. B. realesrgan/msmooth/chromashift) sind nur temporär, jederzeit zurücksetzbar und werden nicht benötigt. `.___PUSH___.cmd` überschreibt `bin` direkt; kein Sichern/Zurückspielen.
-- **Deployment — Pflichtschritt nach jeder Wrapper-Änderung**: `.___PUSH___.cmd` aus dem Repo-Root (xcopy `*.cmd` → `%CMDPATH%\bin`, `git add .`, Commit „Updates", `git push`). **Jede Änderung an `*.cmd` wird unmittelbar nach `%CMDPATH%\bin\` gesynct** — der Alltags-Workflow ruft ausschließlich die `bin`-Kopien auf (Wrapper, `encode-all`, `move-all`, `clean-all`), eine nur im Repo geänderte Datei ist dort unsichtbar. Reiner Sync ohne Commit/Push: `xcopy "*.cmd" "%CMDPATH%\bin\" /y /exclude:exclude.txt` (exclude.txt = `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd`, wie im Skript). `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd` sind von der Kopie ausgeschlossen. **Stand 2026-11-25:** Repo und `bin` sind aktuell: `nvencc64_wrapper.cmd` (1050 Zeilen, inkl. 1772) und `ffmpeg_wrapper.cmd` (1004 Zeilen, Commit `83c3e74`) sind jeweils hash-identisch mit ihren `bin`-Kopien; ebenso `clean-all`, `move-all`, `encode-all`; zusätzlich `nvencc64_wrapper2.cmd` (1267 Zeilen, HD/Full-HD-Extension inkl. Audio-Reencode-Pfad).
+- **Deployment — Pflichtschritt nach jeder Wrapper-Änderung**: `.___PUSH___.cmd` aus dem Repo-Root (xcopy `*.cmd` → `%CMDPATH%\bin`, `git add .`, Commit „Updates", `git push`). **Jede Änderung an `*.cmd` wird unmittelbar nach `%CMDPATH%\bin\` gesynct** — der Alltags-Workflow ruft ausschließlich die `bin`-Kopien auf (Wrapper, `encode-all`, `move-all`, `clean-all`), eine nur im Repo geänderte Datei ist dort unsichtbar. Reiner Sync ohne Commit/Push: `xcopy "*.cmd" "%CMDPATH%\bin\" /y /exclude:exclude.txt` (exclude.txt = `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd`, wie im Skript). `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd` sind von der Kopie ausgeschlossen. **Stand 2026-11-27:** Repo und `bin` sind aktuell: `nvencc64_wrapper.cmd` (1267 Zeilen, HD/Full-HD-Fassung inkl. Audio-Reencode-Pfad) und `ffmpeg_wrapper.cmd` (1004 Zeilen, Commit `83c3e74`) sind jeweils hash-identisch mit ihren `bin`-Kopien; ebenso `clean-all`, `move-all`, `encode-all`; die frühere Basis-Fassung des Wrappers liegt in `.backup/` (ignoriert, nicht im Repo).
 
 ## Abbruch-/CTRL+C-Sicherheit (Stand 2026-11-13)
 
@@ -252,11 +252,11 @@ Bei CTRL+C während der Konvertierung bleiben keine unvollständigen Dateien unt
 - **Aufräumen beim Start**: `MAIN` löscht alte `_Converted\*.part.mkv`-Reste (Rest einer „Terminate batch job"-Beendigung); Z. 249.
 - **Betroffen**: `nvencc64_wrapper` (Encode + mkvmerge-Re-Mux), `ffmpeg_wrapper` (im FFmpeg_Wrapper-Repo), `ffmpeg_avs`, `ffmpeg_audio_converter`, `ffmpeg_video_converter`, `cube`, `clut`.
 
-## nvencc64_wrapper2.cmd — HD/Full-HD-Extension (Stand 2026-11-26)
+## nvencc64_wrapper.cmd — HD/Full-HD-Fassung (umbenannt 2026-11-27)
 
-Parallele Fassung des Wrappers für **gemischtes Material**: Full-HD (`1920x1080` inkl. nativ gecroppter Derivate wie `1920x800`) **und** HD (`1280x720` inkl. `1280x536`, `960x720`, `1440x1080` usw.), verzerrungsfrei. `nvencc64_wrapper.cmd` bleibt unverändert die Referenz/Produktivfassung; `nvencc64_wrapper2.cmd` (1267 Zeilen) unterscheidet sich in `:SETCROP`/`TOK_CROP`, dem PS-Block `#PS_RUN_PROBE_BEGIN#…#PS_RUN_PROBE_END#` (Z. 964–1177), `:SETAUDIO` (zusätzlich `AUDIO_MODE`), der neuen Routine `:CHECK_AUDIO_STREAMS` sowie wenigen `:MAIN`/`:RUN_PROBE`-Zeilen (PROBE_REASON, VSR-Warnung, Audio-Reencode-Pfad).
+Produktivfassung für **gemischtes Material**: Full-HD (`1920x1080` inkl. nativ gecroppter Derivate wie `1920x800`) **und** HD (`1280x720` inkl. `1280x536`, `960x720`, `1440x1080` usw.), verzerrungsfrei; seit **2026-11-27** unter dem Namen `nvencc64_wrapper.cmd` (vormals `nvencc64_wrapper2.cmd`). Die frühere Basis-Fassung (`1050 Zeilen`, nur 1080p-Tabellen) liegt in `.backup/` bzw. in der Git-Historie (Commit `cd68482`). Gegenüber dieser Basis enthält die aktuelle Fassung: `:SETCROP`/`TOK_CROP` mit den `h`-Tokens, den PS-Block `#PS_RUN_PROBE_BEGIN#…#PS_RUN_PROBE_END#` (Z. 964–1177), `:SETAUDIO` mit `AUDIO_MODE`, die Routine `:CHECK_AUDIO_STREAMS` sowie `:MAIN`/`:RUN_PROBE`-Zeilen für PROBE_REASON, VSR-Warnung und den Audio-Reencode-Pfad.
 
-### Ursachen im Basis-Wrapper (in v2 behoben)
+### Ursachen im Basis-Wrapper (in der HD/Full-HD-Fassung behoben)
 - PS-Block rechnete ausschließlich mit 1080p-Tabellen (`$StandardResolutions`, `$StandardWidths`) → bei 720p-Quellen falsche Crop-Werte und gestreckte Ziele (z. B. `1280x872`), negative Pillarbox-Offsets.
 - Mindest-Guard `OrigWidth < 1280 -or OrigHeight < 696` lehnte bereits balkenfreie bzw. kleine HD-Quellen ab, obwohl sie nur durchgereicht werden müssten.
 - Feste Probe-Zeitpunkte (2/10/20 min) → kurze Clips/Trailer ohne Messwerte; keine Plausibilitätsprüfung der Messfenster.
@@ -298,7 +298,7 @@ Bestehende Tokens (`696`–`1040`, `1348`–`1800`, `c1`–`c6`) unverändert. `
 
 ### Zweistufige Codec-/Stream-Prüfung (Audio-Reencode-Pfad, 2026-11-27)
 
-Nur in v2: Bei `CHECK_ENCODED=1` und passendem Video-Codec wird zusätzlich Audio geprüft (`:SETAUDIO` setzt dafür `AUDIO_MODE`; `:CHECK_AUDIO_STREAMS` liest `ffprobe -select_streams a -show_entries stream=index,codec_name,channels -of csv=p=0` und baut `FF_AUDIO_ARGS`/`FF_AUDIO_INFO`).
+Bei `CHECK_ENCODED=1` und passendem Video-Codec wird zusätzlich Audio geprüft (`:SETAUDIO` setzt dafür `AUDIO_MODE`; `:CHECK_AUDIO_STREAMS` liest `ffprobe -select_streams a -show_entries stream=index,codec_name,channels -of csv=p=0` und baut `FF_AUDIO_ARGS`/`FF_AUDIO_INFO`).
 
 - **Fall A — `copy`/`copy1`/`copy2`/`copy12`/`copy23`:** `AUDIO_MODE=copy`; altes Verhalten (Verschieben/Muxen nach `_Converted`, `SKIP_FILE=1`); Track-Filter werden ignoriert.
 - **Fall B — Ziel-Audio-Codec (`ac3`/`aac`/`aacs`/`eac3`, leer = ac3):** keine Audiospuren oder alle Spuren konform → altes Verschieben (`TARGET_DIR`). Mindestens eine Spur abweichend → `TARGET_DIR` bleibt leer, `AUDIO_ONLY_FFMPEG=1`, NVEncC-Block wird übersprungen.
@@ -322,8 +322,8 @@ Nur in v2: Bei `CHECK_ENCODED=1` und passendem Video-Codec wird zusätzlich Audi
 2. **Ungenutzter Diagnose-Kanal:** `Write-Status` schrieb Reject-Gründe in `%PS_STATUS_FILE%`, das `:RUN_PROBE` unverändert löschte — sichtbar blieb nur die Pauschalmeldung. Fix: `Set-Reject` schreibt `SET NVEnc_Reject=…` in die SET-Datei, `:RUN_PROBE` propagiert `PROBE_REASON`, `:MAIN` zeigt den konkreten Grund; auch Probe-Sonderfälle (`no cropdetect result`, unlesbare Auflösung) laufen als Reject mit Grund. **Regel: Diagnosekanäle sofort an einen Konsumenten verdrahten und im Batch testen — nicht nur im PS-Block.**
 
 ### Pflege
-- Steuerlogik (`:MAIN`, EDIT_TAGS, REMUX) weiterhin in **beiden** Wrappern nachziehen; Token-Tabelle in v2 zusätzlich um die `h`-Tokens erweitert.
-- Die Dead-Code-Befunde (Abschnitt „Toter Code") gelten auch für v2 (identischer Batch-Teil; der tote `PS_STATUS_FILE`-Kanal existiert weiterhin).
+- Steuerlogik (`:MAIN`, EDIT_TAGS, REMUX) in der HD/Full-HD-Fassung pflegen; Token-Tabelle enthält zusätzlich die `h`-Tokens. Die Basis-Fassung in `.backup/` ist eingefroren (Historie: Commit `cd68482`).
+- Die Dead-Code-Befunde (Abschnitt „Toter Code") gelten auch für die HD/Full-HD-Fassung (identischer Batch-Teil; der tote `PS_STATUS_FILE`-Kanal existiert weiterhin).
 
 ## Rollback: Version ohne Part-Handling
 
