@@ -6,7 +6,7 @@ Batch-Videotranscoding-Wrapper für [NVEncC64](https://github.com/rigaya/NVEnc) 
 
 - **Auto-Crop** — Ermittelt schwarze Balken per `ffmpeg cropdetect` an 3 relativen Zeitpunkten (15/45/75 % der Laufzeit) und rastet auf Standard-Auflösungen ein (Full-HD- und HD-Tabellen; **kein freier Beschnitt** — außerhalb der Toleranz → `_Check`)
 - **Auto-Quality** — Wählt Qualitätsstufe anhand des Jahrzehnts im Dateinamen (`(19xx)` = hq, `(20xx)` = def)
-- **Auto-Skip** — Bereits im Zielcodec vorliegende Dateien werden ohne Neukodierung verschoben
+- **Auto-Skip** — Bereits im Zielcodec vorliegende Dateien werden ohne Neukodierung verschoben; in `nvencc64_wrapper2.cmd` werden abweichende Audiospuren vorher per FFmpeg neu encodet (Video bleibt `copy`)
 - **Audio-Encoding** — AC3, AAC, E-AC3 oder direkte Kopie (auch selektive Streams)
 - **VPP-Filter** — Denoise, Sharpening, Super-Resolution, VSR, Deinterlacing, HDR→SDR u.v.m.
 - **VHS-Restore** — Feldreparatur + Deinterlacing für VHS-Captures (`vhsRestore`, ONNX-Modell PAL/SECAM)
@@ -216,14 +216,22 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 
 Der Auto-Crop (`crop=auto`) funktioniert folgendermaßen:
 
-1. **Probe**: `ffmpeg cropdetect` wird an 3 Zeitpunkten ausgeführt (00:02:00, 00:10:00, 00:20:00)
-2. **Median**: Aus den Crop-Ergebnissen wird der Median gebildet
-3. **Mapping**: Der ermittelte vertikale Crop wird auf eine Standard-16:9-Höhe gemappt:
-   - 696px ↔ 192+192, 768px ↔ 156+156, 800px ↔ 140+140, …
-   - 1080px ↔ 0+0 (kein Crop = Full HD)
-4. **Asymmetrie-Erkennung**: Bei zu großen Abweichungen zwischen oberem und unterem Crop wird die Datei nach `_Check/` verschoben
+1. **Probe**: `ffmpeg cropdetect` wird an 3 relativen Zeitpunkten ausgeführt (15 %, 45 % und 75 % der Laufzeit; bei Clips < 1,5 s bei 0.2/0.6/1.0 s)
+2. **Median**: Aus den plausiblen Crop-Ergebnissen wird der Median gebildet (Fenster < 50 % der Quellfläche werden verworfen)
+3. **Mapping**: Der ermittelte vertikale oder horizontale Beschnitt wird strikt auf Standard-Auflösungen gemappt (Full-HD- und HD-Tabellen; kein freier Beschnitt — Über-Crop max. 4 px, Unter-Crop max. 8 px)
+4. **Validierung & Rejects**: Bei Asymmetrie, Windowbox, anamorphem Material oder Abweichungen außerhalb der Snap-Toleranz wird die Datei samt konkretem Grund auf der Konsole nach `_Check/` verschoben
 
-Der Auto-Crop skaliert auf 1920px Breite. Horizontale Letterbox-Varianten (z.B. 2.35:1) werden auf passende Breiten gemapped.
+Die HD-Tabellen (`1280x720`-Basis) gelten nur in `nvencc64_wrapper2.cmd`; `nvencc64_wrapper.cmd` nutzt die Full-HD-Tabellen.
+
+## Audio-Reencode bei bereits kodiertem Video (nur `nvencc64_wrapper2.cmd`)
+
+Liegt der Videostream bereits im Zielcodec vor (`CHECK_ENCODED=1`), prüft `nvencc64_wrapper2.cmd` zusätzlich die Audiospuren:
+
+- **`copy`/`copy1`/`copy2`/`copy12`/`copy23`** (kein Ziel-Audio-Codec): unverändertes Verschieben nach `_Converted`, Track-Filter werden ignoriert.
+- **`ac3`/`aac`/`aacs`/`eac3`** (oder leer): Sind alle Audiospuren bereits konform (bzw. enthält die Datei gar kein Audio), wird wie bisher verschoben. Weicht mindestens eine Spur ab, wird die Quelldatei **nicht** verschoben und **nicht** gelöscht; stattdessen erzeugt `ffmpeg` die Ausgabe mit `-c:v copy`:
+  - konforme Spuren: `-c:a:<idx> copy`
+  - abweichende Spuren: AC3 (2ch 192k, mehrkanalig 384k / 5.1-Downmix), AAC (128k/256k), AAC-Stereo (`aacs`: immer 2ch 128k), E-AC3 (320k/640k)
+- Untertitel, Kapitel und Anhänge (Fonts) werden übernommen; nach Erfolg laufen `EDIT_TAGS`, `REMUX_IF_NEEDED` und der 5-Sekunden-Countdown wie beim regulären Encode. Im Fehlerfall bleibt die Quelle unverändert, die `.part.mkv` wird gelöscht.
 
 ## Metadaten-Bereinigung (Tag-Edit)
 
@@ -256,7 +264,7 @@ Aktiviert detaillierte Ausgabe der Crop-Erkennung, NVEnc-Parameter und Zwischene
 - **Unbekannter Codec** → Datei wird nach `_Check/` verschoben (nicht bei `*.avs` – dort entfällt die Codec-Erkennung)
 - **Crop-Probe fehlgeschlagen** → Datei wird nach `_Check/` verschoben (bei `*.avs`: Warnung, Weiterkodierung ohne Crop)
 - **Asymmetrische schwarze Balken** → Datei wird nach `_Check/` verschoben
-- **Quelle zu klein** (< 1280×696) → Datei wird nach `_Check/` verschoben
+- **Quelle zu klein** (< 1280×696, in `nvencc64_wrapper2.cmd`: < 960×464) → Datei wird nach `_Check/` verschoben
 - **Tag-Edit fehlgeschlagen** → Datei wird nach `_Check/` verschoben
 
 ## Hilfsskripte im `bin`

@@ -97,15 +97,16 @@ exit /b
 
 :SETAUDIO
 set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only --audio-stream 7.1:5.1"
-if /i "%2"=="copy"                  (set "AUDIO=--audio-copy")
-if /i "%2"=="copy1"                 (set "AUDIO=--audio-copy 1")
-if /i "%2"=="copy2"                 (set "AUDIO=--audio-copy 2")
-if /i "%2"=="copy12"                (set "AUDIO=--audio-copy 1,2")
-if /i "%2"=="copy23"                (set "AUDIO=--audio-copy 2,3")
-if /i "%2"=="ac3"                   (set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only --audio-stream 7.1:5.1")
-if /i "%2"=="aac"                   (set "AUDIO=--audio-codec aac --audio-bitrate stereo:128,5.1:256 --audio-encode-other-codec-only")
-if /i "%2"=="aacs"                  (set "AUDIO=--audio-codec aac --audio-stream :stereo --audio-bitrate stereo:128")
-if /i "%2"=="eac3"                  (set "AUDIO=--audio-codec eac3 --audio-bitrate stereo:320,5.1:640 --audio-encode-other-codec-only")
+set "AUDIO_MODE=ac3"
+if /i "%2"=="copy"                  (set "AUDIO=--audio-copy" & set "AUDIO_MODE=copy")
+if /i "%2"=="copy1"                 (set "AUDIO=--audio-copy 1" & set "AUDIO_MODE=copy")
+if /i "%2"=="copy2"                 (set "AUDIO=--audio-copy 2" & set "AUDIO_MODE=copy")
+if /i "%2"=="copy12"                (set "AUDIO=--audio-copy 1,2" & set "AUDIO_MODE=copy")
+if /i "%2"=="copy23"                (set "AUDIO=--audio-copy 2,3" & set "AUDIO_MODE=copy")
+if /i "%2"=="ac3"                   (set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only --audio-stream 7.1:5.1" & set "AUDIO_MODE=ac3")
+if /i "%2"=="aac"                   (set "AUDIO=--audio-codec aac --audio-bitrate stereo:128,5.1:256 --audio-encode-other-codec-only" & set "AUDIO_MODE=aac")
+if /i "%2"=="aacs"                  (set "AUDIO=--audio-codec aac --audio-stream :stereo --audio-bitrate stereo:128" & set "AUDIO_MODE=aacs")
+if /i "%2"=="eac3"                  (set "AUDIO=--audio-codec eac3 --audio-bitrate stereo:320,5.1:640 --audio-encode-other-codec-only" & set "AUDIO_MODE=eac3")
 exit /b
 
 :SETCROP
@@ -255,6 +256,59 @@ if /i "%8"=="true"                  (set "CHECK_ENCODED=1")
 if /i "%8"=="false"                 (set "CHECK_ENCODED=0")
 exit /b
 
+:CHECK_AUDIO_STREAMS
+setlocal EnableDelayedExpansion
+set "AUDIO_STREAM_COUNT=0"
+set "AUDIO_NEEDS_REENCODE=0"
+set "FF_AUDIO_ARGS="
+set "FF_AUDIO_INFO="
+set "AIDX=0"
+set "ACODEC_OUT=!AUDIO_MODE!"
+if /i "!AUDIO_MODE!"=="aacs" set "ACODEC_OUT=aac"
+for /f "usebackq tokens=1,2,3 delims=," %%A in (`ffprobe -v error -select_streams a -show_entries stream^=index^,codec_name^,channels -of csv^=p^=0 "!INFILE!"`) do (
+    set "ACODEC=%%B"
+    set "ACH=%%C"
+    if not defined ACH set "ACH=2"
+    set "AREENCODE=0"
+    set "ABITRATE="
+    set "AAC_CH="
+    set "AINFO="
+    if /i "!AUDIO_MODE!"=="ac3" (
+        if /i not "!ACODEC!"=="ac3" set "AREENCODE=1"
+        if !ACH! LEQ 2 (set "ABITRATE=192k") else (set "ABITRATE=384k" & set "AAC_CH=6")
+    )
+    if /i "!AUDIO_MODE!"=="aac" (
+        if /i not "!ACODEC!"=="aac" set "AREENCODE=1"
+        if !ACH! LEQ 2 (set "ABITRATE=128k") else (set "ABITRATE=256k")
+    )
+    if /i "!AUDIO_MODE!"=="aacs" (
+        set "AREENCODE=1"
+        set "ABITRATE=128k"
+        set "AAC_CH=2"
+        if /i "!ACODEC!"=="aac" if !ACH! LEQ 2 (set "AREENCODE=0" & set "AAC_CH=")
+    )
+    if /i "!AUDIO_MODE!"=="eac3" (
+        if /i not "!ACODEC!"=="eac3" set "AREENCODE=1"
+        if !ACH! LEQ 2 (set "ABITRATE=320k") else (set "ABITRATE=640k")
+    )
+    if "!AREENCODE!"=="1" (
+        set "AUDIO_NEEDS_REENCODE=1"
+        set "FF_AUDIO_ARGS=!FF_AUDIO_ARGS! -c:a:!AIDX! !ACODEC_OUT!"
+        if defined AAC_CH set "FF_AUDIO_ARGS=!FF_AUDIO_ARGS! -ac:a:!AIDX! !AAC_CH!"
+        set "FF_AUDIO_ARGS=!FF_AUDIO_ARGS! -b:a:!AIDX! !ABITRATE!"
+        if defined AAC_CH (set "AINFO=Track !AIDX!: !ACODEC! (!ACH!ch) -> !ACODEC_OUT! (!AAC_CH!ch,!ABITRATE!)") else (set "AINFO=Track !AIDX!: !ACODEC! (!ACH!ch) -> !ACODEC_OUT! (!ABITRATE!)")
+    ) else (
+        set "FF_AUDIO_ARGS=!FF_AUDIO_ARGS! -c:a:!AIDX! copy"
+        set "AINFO=Track !AIDX!: !ACODEC! (!ACH!ch) -> copy"
+    )
+    set "FF_AUDIO_INFO=!FF_AUDIO_INFO!!AINFO!; "
+    set /a AIDX+=1
+)
+set "AUDIO_STREAM_COUNT=!AIDX!"
+if defined FF_AUDIO_INFO set "FF_AUDIO_INFO=!FF_AUDIO_INFO:~0,-2!"
+endlocal & set "AUDIO_STREAM_COUNT=%AUDIO_STREAM_COUNT%" & set "AUDIO_NEEDS_REENCODE=%AUDIO_NEEDS_REENCODE%" & set "FF_AUDIO_ARGS=%FF_AUDIO_ARGS%" & set "FF_AUDIO_INFO=%FF_AUDIO_INFO%"
+exit /b
+
 :MAIN
 call :ENSURE_DIR "_Converted"
 if exist "_Converted\*.part.mkv" del /Q "_Converted\*.part.mkv" >nul 2>&1
@@ -277,6 +331,12 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
     set "TARGET_DIR="
     set "RESIZE_REQUIRED=0"
     set "SRC_CODEC="
+    set "VIDEO_MATCH="
+    set "AUDIO_ONLY_FFMPEG=0"
+    set "AUDIO_STREAM_COUNT=0"
+    set "AUDIO_NEEDS_REENCODE=0"
+    set "FF_AUDIO_ARGS="
+    set "FF_AUDIO_INFO="
 
     setlocal EnableDelayedExpansion
 
@@ -298,9 +358,20 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
             set "SKIP_FILE=1"
         ) else (
             if "%CHECK_ENCODED%"=="1" (
-                if /i "!SRC_CODEC!"=="HEVC" if /i "%ENCODER%"=="hevc" set "TARGET_DIR=_Converted"
-                if /i "!SRC_CODEC!"=="AVC"  if /i "%ENCODER%"=="h264" set "TARGET_DIR=_Converted"
-                if /i "!SRC_CODEC!"=="AV1"  if /i "%ENCODER%"=="av1"  set "TARGET_DIR=_Converted"
+                set "VIDEO_MATCH="
+                if /i "!SRC_CODEC!"=="HEVC" if /i "%ENCODER%"=="hevc" set "VIDEO_MATCH=1"
+                if /i "!SRC_CODEC!"=="AVC"  if /i "%ENCODER%"=="h264" set "VIDEO_MATCH=1"
+                if /i "!SRC_CODEC!"=="AV1"  if /i "%ENCODER%"=="av1"  set "VIDEO_MATCH=1"
+                if defined VIDEO_MATCH (
+                    if /i "!AUDIO_MODE!"=="copy" (
+                        set "TARGET_DIR=_Converted"
+                    ) else (
+                        call :CHECK_AUDIO_STREAMS
+                        if "!AUDIO_STREAM_COUNT!"=="0" set "TARGET_DIR=_Converted"
+                        if not "!AUDIO_STREAM_COUNT!"=="0" if "!AUDIO_NEEDS_REENCODE!"=="0" set "TARGET_DIR=_Converted"
+                        if not "!AUDIO_STREAM_COUNT!"=="0" if "!AUDIO_NEEDS_REENCODE!"=="1" set "AUDIO_ONLY_FFMPEG=1"
+                    )
+                )
             )
         )
     )
@@ -336,6 +407,35 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
         set "SKIP_FILE=1"
         if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "!MOVED_FILE!"
         call :REMUX_IF_NEEDED "!MOVED_FILE!" "!MOVED_FILE!"
+    )
+
+    if "!AUDIO_ONLY_FFMPEG!"=="1" (
+        echo %ESC%[91mWARNING: Video already encoded as !SRC_CODEC!, but audio tracks require re-encoding via FFmpeg...%ESC%[0m
+        echo(!FF_AUDIO_INFO!
+        powershell -command "write-output ('file:///' + (get-item '!INDIR!').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace [char]33, '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
+        if "!IS_AVS!"=="0" mediainfo --Inform="General;%%Duration/String2%% - %%FileSize/String4%%" "!INFILE!"
+        ffmpeg.exe -y -hide_banner -loglevel error -stats -i "!INFILE!" -map 0:v -map 0:a? -map 0:s? -map 0:t? -map_chapters 0 -c:v copy -c:s copy -c:t copy !FF_AUDIO_ARGS! "_Converted\!INBASE!.part.mkv"
+        set "RC=!ERRORLEVEL!"
+        if not "!RC!"=="0" (
+            if exist "_Converted\!INBASE!.part.mkv" del /Q "_Converted\!INBASE!.part.mkv" >nul 2>&1
+            echo %ESC%[91mWARNING: FFmpeg audio re-encoding failed or cancelled. Source not moved.%ESC%[0m
+            exit /b
+        )
+        if not exist "_Converted\!INBASE!.part.mkv" (
+            echo %ESC%[91mWARNING: No output file.%ESC%[0m
+            exit /b
+        )
+        move /Y "_Converted\!INBASE!.part.mkv" "_Converted\!INBASE!.mkv" >nul
+        if exist "_Converted\!INBASE!.mkv" (
+            if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "_Converted\!INBASE!.mkv"
+            call :REMUX_IF_NEEDED "!INFILE!" "_Converted\!INBASE!.mkv"
+        )
+        for /L %%X in (5,-1,1) do (
+            echo Waiting for %%X seconds...
+            timeout /t 1 >nul
+        )
+        echo.
+        set "SKIP_FILE=1"
     )
 
     if not defined SKIP_FILE (
