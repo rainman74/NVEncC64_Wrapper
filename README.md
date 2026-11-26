@@ -4,7 +4,7 @@ Batch-Videotranscoding-Wrapper für [NVEncC64](https://github.com/rigaya/NVEnc) 
 
 ## Features
 
-- **Auto-Crop** — Ermittelt schwarze Balken per `ffmpeg cropdetect` an 3 Zeitpunkten und mapped auf Standard-16:9-Resolutionen
+- **Auto-Crop** — Ermittelt schwarze Balken per `ffmpeg cropdetect` an 3 relativen Zeitpunkten (15/45/75 % der Laufzeit) und rastet auf Standard-Auflösungen ein (Full-HD- und HD-Tabellen; **kein freier Beschnitt** — außerhalb der Toleranz → `_Check`)
 - **Auto-Quality** — Wählt Qualitätsstufe anhand des Jahrzehnts im Dateinamen (`(19xx)` = hq, `(20xx)` = def)
 - **Auto-Skip** — Bereits im Zielcodec vorliegende Dateien werden ohne Neukodierung verschoben
 - **Audio-Encoding** — AC3, AAC, E-AC3 oder direkte Kopie (auch selektive Streams)
@@ -39,6 +39,8 @@ Im Arbeitsverzeichnis werden `*.mkv`, `*.mp4`, `*.mpg`, `*.mov`, `*.avi`, `*.web
 ```
 nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [chkenc] [seek=<hh:mm:ss.ms>]
 ```
+
+> **HD-Variante:** `nvencc64_wrapper2.cmd` ist die erweiterte Fassung für gemischtes Material (Full-HD **und** `1280x720`, inklusive nativ gecroppter Derivate wie `1280x536`, `960x720` oder `1440x1080`). Aufruf identisch. Der Auto-Crop rastet dort strikt auf die 1080p- bzw. 720p-Standardtabellen ein; Messwerte außerhalb der Toleranz führen zu `REJECTED` (Datei nach `_Check`), es wird **kein** freier Beschnitt berechnet. Der konkrete Ablehnungsgrund erscheint auf der Konsole. Bei `auto` + VSR-Filter warnt der Wrapper, dass NVEncC bei 1:1-Zielauflösung auf bicubic zurückfällt. Der Default-Decoder `hw` funktioniert auch bei Links-Crop (Pillarbox) — in NVEncC 9.41 verifiziert.
 
 | Pos | Parameter | Default | Beschreibung |
 |-----|-----------|---------|--------------|
@@ -91,7 +93,7 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 **Automatisch:**
 | Wert | Verhalten |
 |------|-----------|
-| `auto` | Führt `ffmpeg cropdetect` an 3 Zeitpunkten durch, ermittelt per Median schwarze Balken und mapped auf Standard-16:9-Resolutionen |
+| `auto` | Führt `ffmpeg cropdetect` an 3 relativen Zeitpunkten durch, ermittelt per Median schwarze Balken und rastet strikt auf Standard-Auflösungen ein. Full-HD-Quellen nutzen die 1080p-Tabellen, `1280x720`-Quellen die HD-Tabellen; liegt der Messwert außerhalb der Toleranz, geht die Datei als `REJECTED` nach `_Check` (kein freier Beschnitt). Der konkrete Grund wird als `WARNING: Auto-crop rejected (<Grund>).` ausgegeben. |
 | `none` | Kein Crop |
 
 **Vertikaler Crop (schwarze Balken oben/unten entfernen, Zielbreite 1920):**
@@ -115,6 +117,12 @@ nvencc64_wrapper <encoder> [audio] [quality] [crop] [filter] [mode] [decoder] [c
 
 **Letterbox-Standards (1920x1080 Basis mit horizontalem Crop):**
 `1348`, `1408`, `1420`, `1440`, `1480`, `1500`, `1620`, `1764`, `1772`, `1780`, `1788`, `1792`, `1800`
+
+**HD-Letterbox-Standards (Basis `1280x720`, nur 720p-Quellen — nur in `nvencc64_wrapper2.cmd`):**
+`h692`, `h640`, `h580`, `h544`, `h536`, `h464` (Crop-only; ergibt `1280x692` … `1280x464`)
+
+**HD-Pillarbox-Standards (Basis `1280x720`, nur 720p-Quellen — nur in `nvencc64_wrapper2.cmd`):**
+`h960`, `h988`, `h1080`, `h1196` (`--crop` + `--output-res`; ergibt `960x720` … `1196x720`)
 
 **Aliase (alle = kein Crop):** `c1`, `c2`, `c3`, `c4`, `c5`, `c6`
 

@@ -2,7 +2,7 @@
 
 Wrapper-Skript für `nvencc64.exe` (NVIDIA Hardware-Encoder). Hauptsächlich eine `.cmd`-Datei plus zugehörige Hilfs-Skripte.
 
-> **Dokument-Stand: 2026-11-25.** Abgleich gegen den Repo-Code: `nvencc64_wrapper.cmd` = 1050 Zeilen (Commit `b340600`; Basis `5c34ad0` + 1772-Ergänzung); `ffmpeg_wrapper.cmd` = 1004 Zeilen, Commit `83c3e74` (Schwester-Repo `D:\Sources\FFmpeg_Wrapper`). **Alle Zeilenangaben in diesem Dokument beziehen sich auf diesen Stand** — bei Code-Änderungen Zeilenangaben mitpflegen (oder Abschnitt „Toter Code" als Referenz nutzen, dort steht das Prüfverfahren).
+> **Dokument-Stand: 2026-11-25 (Review-Nachtrag 2026-11-27).** Abgleich gegen den Repo-Code: `nvencc64_wrapper.cmd` = 1050 Zeilen (Commit `b340600`; Basis `5c34ad0` + 1772-Ergänzung); `ffmpeg_wrapper.cmd` = 1004 Zeilen, Commit `83c3e74` (Schwester-Repo `D:\Sources\FFmpeg_Wrapper`); `nvencc64_wrapper2.cmd` = 1167 Zeilen (HD/Full-HD-Extension, Stand 2026-11-26). **Alle Zeilenangaben in diesem Dokument beziehen sich auf diesen Stand** — bei Code-Änderungen Zeilenangaben mitpflegen (oder Abschnitt „Toter Code" als Referenz nutzen, dort steht das Prüfverfahren).
 >
 > **Korrekturen 2026-11-25 (Doku-Drift beseitigt):** Pfad-Setup (Z. 7–9 nutzt `%CMDPATH%\bin\nvvfx_models`, nicht `NVVFX_MODEL_DIR`), Zeilennummern in Fixes-Tabelle/D1–D6/Konventionen, Token-Naming in SETCROP (kein `c`-Präfix), SETCROP-Semantik (teils Crop + Resize, nicht „nur Resize"), Token-Zahl (134 statt 125), `cmd /c`-Subshell-Aussage, ffmpeg_wrapper-Divergenz. **Nachtrag:** `1772` als horizontale Standardbreite + Crop-Token in beiden Wrappern (nvencc Z. 152/814/882; Auto-Erkennung funktional getestet); ffmpeg-Baseline auf `83c3e74`/1004 Zeilen aktualisiert.
 
@@ -228,6 +228,8 @@ Bei Änderungen oder Erweiterungen an `nvencc64_wrapper.cmd` **oder** `ffmpeg_wr
 - **Neue Encoder?** Analog zu AV1 entweder explizit auf `SETQUALITY-HEVC` mappen (mit Kommentar warum) oder eigene `:SETQUALITY-<NAME>`-Routine schreiben.
 - **Neue PS-Sub-Skripte?** Marker-Format `#PS_<NAME>_BEGIN#` / `#PS_<NAME>_END#` verwenden, Block am Ende der `.cmd` anhängen, Extraction-Logik aus `:EDIT_TAGS` (nvencc Z. 509) oder `:RUN_PROBE` (nvencc Z. 658) kopieren.
 - **Neue Branches in :REMUX_IF_NEEDED?** `goto` verwenden, nicht `if`-Klammern (siehe Hinweis in Aktive Fixes #3).
+- **Auto-Crop-Schwellen?** Immer als geschlossene Partition der Messwerte definieren (Passthrough/Windowbox/Pillarbox/Letterbox) und die Grenzwerte ±1 px testen — siehe Review-Lehre in der Wrapper2-Sektion.
+- **Reject-/Diagnosemeldungen?** Nie in einer Datei versanden lassen: Grund bis zur Konsole propagieren (`Set-Reject` → `PROBE_REASON` → `:MAIN`-WARNING) und im Batch testen.
 - **Nach jeder Änderung an einer `.cmd`: sofort nach `%CMDPATH%\bin\` syncen** (`.___PUSH___.cmd` oder `xcopy "*.cmd" "%CMDPATH%\bin\" /y`) — nicht optional, siehe Deployment-Abschnitt.
 - **Toter Code?** Vor dem Entfernen den Abschnitt „Toter Code — Kandidatenliste" prüfen; neue Funde dort mit Zeilenbeleg und Datum eintragen, statt sie nur im Chat zu erwähnen.
 
@@ -237,7 +239,7 @@ Bei Änderungen oder Erweiterungen an `nvencc64_wrapper.cmd` **oder** `ffmpeg_wr
 - **Alte Pipeline entfernt**: `sort-all.cmd` gelöscht; die Starter `_1_sort.cmd`, `_2_encode.cmd`, `_3_move.cmd` (in `%CMDPATH%\bin\scripts\`) gelöscht; `encode-edit.cmd` gelöscht (referenzierte das gelöschte `sort-all.cmd`). Der Workflow läuft über `clean-all` / `encode-all` / `move-all`.
 - **README.md** erweitert: neuer Abschnitt „Hilfsskripte im `bin`" (encode-all, move-all inkl. Serien-Heuristik/`.checked`-Wegfall, clean-all inkl. `:ProcessCopy`-Warnung), Features-Bullet „Hilfsskripte", Arbeitsablauf-Punkt 4 (Savings) präzisiert; Hinweis auf entfernte Pipeline/Lean-Meldungen.
 - **Repo vs. `bin`**: Das Repo enthält die sanitisierte Version von `nvencc64_wrapper.cmd`. **Custom Crops und Filter (`cX`/`fX`) sind nicht zu beachten** — private Token-Werte im `bin` (`smooth`, `nlmeans`, `f1`–`f3` mit eigenen `--vpp-*`-Ketten, z. B. realesrgan/msmooth/chromashift) sind nur temporär, jederzeit zurücksetzbar und werden nicht benötigt. `.___PUSH___.cmd` überschreibt `bin` direkt; kein Sichern/Zurückspielen.
-- **Deployment — Pflichtschritt nach jeder Wrapper-Änderung**: `.___PUSH___.cmd` aus dem Repo-Root (xcopy `*.cmd` → `%CMDPATH%\bin`, `git add .`, Commit „Updates", `git push`). **Jede Änderung an `*.cmd` wird unmittelbar nach `%CMDPATH%\bin\` gesynct** — der Alltags-Workflow ruft ausschließlich die `bin`-Kopien auf (Wrapper, `encode-all`, `move-all`, `clean-all`), eine nur im Repo geänderte Datei ist dort unsichtbar. Reiner Sync ohne Commit/Push: `xcopy "*.cmd" "%CMDPATH%\bin\" /y /exclude:exclude.txt` (exclude.txt = `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd`, wie im Skript). `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd` sind von der Kopie ausgeschlossen. **Stand 2026-11-25:** Repo und `bin` sind aktuell: `nvencc64_wrapper.cmd` (1050 Zeilen, inkl. 1772) und `ffmpeg_wrapper.cmd` (1004 Zeilen, Commit `83c3e74`) sind jeweils hash-identisch mit ihren `bin`-Kopien; ebenso `clean-all`, `move-all`, `encode-all`.
+- **Deployment — Pflichtschritt nach jeder Wrapper-Änderung**: `.___PUSH___.cmd` aus dem Repo-Root (xcopy `*.cmd` → `%CMDPATH%\bin`, `git add .`, Commit „Updates", `git push`). **Jede Änderung an `*.cmd` wird unmittelbar nach `%CMDPATH%\bin\` gesynct** — der Alltags-Workflow ruft ausschließlich die `bin`-Kopien auf (Wrapper, `encode-all`, `move-all`, `clean-all`), eine nur im Repo geänderte Datei ist dort unsichtbar. Reiner Sync ohne Commit/Push: `xcopy "*.cmd" "%CMDPATH%\bin\" /y /exclude:exclude.txt` (exclude.txt = `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd`, wie im Skript). `README.md`, `.___CLAUDE___.cmd`, `.___PUSH___.cmd` sind von der Kopie ausgeschlossen. **Stand 2026-11-25:** Repo und `bin` sind aktuell: `nvencc64_wrapper.cmd` (1050 Zeilen, inkl. 1772) und `ffmpeg_wrapper.cmd` (1004 Zeilen, Commit `83c3e74`) sind jeweils hash-identisch mit ihren `bin`-Kopien; ebenso `clean-all`, `move-all`, `encode-all`; zusätzlich `nvencc64_wrapper2.cmd` (1167 Zeilen, HD/Full-HD-Extension).
 
 ## Abbruch-/CTRL+C-Sicherheit (Stand 2026-11-13)
 
@@ -249,6 +251,67 @@ Bei CTRL+C während der Konvertierung bleiben keine unvollständigen Dateien unt
 - **`_Check` bleibt** ausschließlich für echte **Vorprüf-Fehler**: „Could not detect codec", „Probe failed or source too small" (beide unverändert).
 - **Aufräumen beim Start**: `MAIN` löscht alte `_Converted\*.part.mkv`-Reste (Rest einer „Terminate batch job"-Beendigung); Z. 249.
 - **Betroffen**: `nvencc64_wrapper` (Encode + mkvmerge-Re-Mux), `ffmpeg_wrapper` (im FFmpeg_Wrapper-Repo), `ffmpeg_avs`, `ffmpeg_audio_converter`, `ffmpeg_video_converter`, `cube`, `clut`.
+
+## nvencc64_wrapper2.cmd — HD/Full-HD-Extension (Stand 2026-11-26)
+
+Parallele Fassung des Wrappers für **gemischtes Material**: Full-HD (`1920x1080` inkl. nativ gecroppter Derivate wie `1920x800`) **und** HD (`1280x720` inkl. `1280x536`, `960x720`, `1440x1080` usw.), verzerrungsfrei. `nvencc64_wrapper.cmd` bleibt unverändert die Referenz/Produktivfassung; `nvencc64_wrapper2.cmd` (1167 Zeilen) unterscheidet sich nur in `:SETCROP`/`TOK_CROP`, dem PS-Block `#PS_RUN_PROBE_BEGIN#…#PS_RUN_PROBE_END#` (Z. 864–1077) und wenigen `:MAIN`/`:RUN_PROBE`-Zeilen (PROBE_REASON, VSR-Warnung; siehe unten).
+
+### Ursachen im Basis-Wrapper (in v2 behoben)
+- PS-Block rechnete ausschließlich mit 1080p-Tabellen (`$StandardResolutions`, `$StandardWidths`) → bei 720p-Quellen falsche Crop-Werte und gestreckte Ziele (z. B. `1280x872`), negative Pillarbox-Offsets.
+- Mindest-Guard `OrigWidth < 1280 -or OrigHeight < 696` lehnte bereits balkenfreie bzw. kleine HD-Quellen ab, obwohl sie nur durchgereicht werden müssten.
+- Feste Probe-Zeitpunkte (2/10/20 min) → kurze Clips/Trailer ohne Messwerte; keine Plausibilitätsprüfung der Messfenster.
+
+### Auflösungsbewusste Tabellen (nur Snapping, kein freier Beschnitt — Vorgabe)
+- **Full-HD-Basis** (`OrigWidth >= 1600` oder `OrigHeight >= 1000`): `$StandardResolutions1080` (TotalV → Crop/Res, unverändert zum Basis-Wrapper) und `$StandardWidths1080` (Pillarbox-Breiten 1800…1348, inkl. 1772).
+- **HD-Basis:** `$StandardResolutions720` (TotalV → Zielhöhe; mod8/mod4-bevorzugt: 720, 692, 640, 580, 544, 536, 464) und `$StandardWidths720` (Pillarbox-Breiten 1196, 1080, 988, 960).
+- **Snap-Fenster:** Über-Crop max. 4 px (`$SnapOver`), Unter-Crop max. 8 px (`$SnapUnder`); außerhalb → `REJECTED` (Exit 8) → Datei nach `_Check`. **Keine** freien Pixelwerte aus `cropdetect` gehen an NVEncC.
+- **Schwellen lückenlos (2026-11-26):** Passthrough `TotalV <= 4` **und** `TotalH <= 10`; Pillarbox-Zweig `TotalV <= 4`; Windowbox `TotalV > 4` **und** `TotalH > 10`; horizontale Asymmetrie nur bei `TotalH > 10` **und** `TotalV <= 4`. Damit fällt `TotalV = 3..4 px` (vertikales Rauschen bei Pillarbox) nicht mehr fälschlich in den Letterbox-Zweig (`no standard letterbox height`).
+- **Passthrough:** kein Balken → `0:0:0:0` + Quellauflösung (deckt nativ gecroppte Quellen ab).
+- **Rejects:** Windowbox, einseitige/unsymmetrische Balken, ungerade Quellmaße, Quelle < `960x464`, anamorphe Quelle (`SAR != 1:1|0:1`), kein Standard-Match — manueller Beschnitt erforderlich.
+- **Crop-Offsets dürfen ungerade sein:** `NVEncC 9.41` akzeptiert ungerade `--crop`-Werte; eine Mod2-Reject-Prüfung wurde bewusst **nicht** eingebaut (am 2026-11-26 auf User-Korrektur wieder zurückgerollt).
+- **Ablehnungsgrund sichtbar:** PS schreibt `SET NVEnc_Reject=<Grund>` in die SET-Datei; `:RUN_PROBE` reicht das als `PROBE_REASON` an `:MAIN` weiter, das konkret `WARNING: Auto-crop rejected (<Grund>). Moving file to _Check.` ausgibt (Fallback: bisherige Pauschalmeldung). Auch `no cropdetect result` und nicht lesbare Auflösung laufen als Reject mit Grund (Exit 8 statt früher 2/4).
+- **Probe:** relative Zeitpunkte 15/45/75 % der Laufzeit (Clips < 1,5 s: 0.2/0.6/1.0 s), Median aus 3 Messungen, Fenster < 50 % der Quellfläche verworfen.
+
+### Neue manuelle HD-Tokens (`:SETCROP`/`TOK_CROP`, nur 720p-Container)
+| Token | Wirkung |
+|---|---|
+| `h692` | `--crop 0,14,0,14` (1280x692) |
+| `h640` | `--crop 0,40,0,40` (1280x640) |
+| `h580` | `--crop 0,70,0,70` (1280x580) |
+| `h544` | `--crop 0,88,0,88` (1280x544) |
+| `h536` | `--crop 0,92,0,92` (1280x536) |
+| `h540` | `--crop 0,90,0,90` (1280x540, manuelle Mod4-Alternative; Auto bevorzugt 536/Mod8) |
+| `h464` | `--crop 0,128,0,128` (1280x464) |
+| `h960` | `--crop 160,0,160,0 --output-res 960x720` |
+| `h988` | `--crop 146,0,146,0 --output-res 988x720` |
+| `h1080` | `--crop 100,0,100,0 --output-res 1080x720` |
+| `h1196` | `--crop 42,0,42,0 --output-res 1196x720` |
+
+Bestehende Tokens (`696`–`1040`, `1348`–`1800`, `c1`–`c6`) unverändert. `h`-Tokens sind **fixe 720p-Werte** und nur für `1280x720`-Container gedacht (auf 1080p-Quellen würden sie falsch croppen). `TOK_CROP` = 58 Tokens ↔ 58 Branches.
+
+### Wechselwirkungen (geprüft)
+- `--crop` + `--output-res` = gecroppte Größe ⇒ **keine Skalierung** (NVEncC-Protokoll zeigt nur `crop: …`, keinen Resize); SAR bleibt 1:1 → keine Verzerrung.
+- `RESIZE_REQUIRED`/`FILTER_HAS_RESIZE` unverändert: im AUTO-Pfad wird kein `--vpp-resize spline36` injiziert (D2 bleibt gültig).
+- **ngx-vsr + AUTO:** kein Abbruch, aber NVEncC meldet `resolution change: normalization resize falls back from ngx-vsr to bicubic` — bei 1:1-Ziel greift kein VSR; `:MAIN` gibt zusätzlich eine gelbe Konsolenwarnung aus (`VSR filter combined with auto-crop …`). Für echten VSR-Effekt explizites Resize-Token nötig.
+- **`--avhw` + Links-Crop:** Die NVEncC-Hilfe behauptet „left crop is unavailable with avhw reader"; in 9.41 empirisch geprüft (Auto 960x720/1440x1080 und manuelle Tokens `h960`/`1440`, Default-Decoder `hw`): Crop wird korrekt angewandt (`crop: 160,0,160,0` bzw. `240,0,240,0`), kein Fehler, **kein `avsw`-Fallback nötig**; auch 10-bit-Quelle + Token `1440` funktioniert mit `--avhw`. Kein automatischer Decoder-Wechsel implementiert.
+- **Bekannte Grenze (10-bit):** `cropdetect` mit `limit=24` wertet die rohen 10-bit-Samples aus (Schwarzbalken ≈ 64) → bei 10-bit-Quellen erkennt Auto-Crop keine Balken und geht auf Passthrough; manuelle Tokens funktionieren. Nicht im Scope dieses Feintunings (Fix wäre `format=yuv420p,cropdetect…` oder angepasstes Limit).
+
+### Tests (2026-11-26)
+- 43 Unit-Fälle für den PS-Block (HD/FHD letterbox + pillarbox, nativ gecroppte Quellen, Snap-Kanten, Rejects, Anamorph, Windowbox, 1-s-Clip, neuer Edge-Case **Pillarbox mit TotalV=4 px Rauschen**, `TotalH=10`-Grenze, ungerade Offsets erlaubt): **43/43 PASS**.
+- 7 End-to-End-Läufe + Batch-Checks: auto → `1280x536` / `1920x800` / `960x720`; manuell `h536`/`h988`/`h464`/`h960` → korrekte Ausgabedimensionen; **PROBE_REASON-Ausgabe** (`WARNING: Auto-crop rejected (windowbox …)`) inkl. `_Check`-Move; **VSR-Warnung** sichtbar; `hw`-Decoder + Links-Crop (960x720, 1440x1080) ohne Fehler. Im Vpp-Protokoll nur `crop`, kein Resize.
+- Usage/Tokens: `h`-Tokens in der Usage-Liste; unbekannte Tokens (`h999`) werden mit vollständiger Liste abgelehnt.
+
+### Review 2026-11-27 — Lessons Learned (externes Review)
+
+**Positiv bestätigt:** Architektur-Integration ohne Regressionen (Delayed Expansion, Subshell-Isolation, Token-Validierung in `:SETTOKEN`/`:SETCROP`, ASCII-Encoding der temporären `.cmd`-Dateien); strikte Whitelist-Logik mit asymmetrischem Snap-Fenster (`$SnapOver=4`/`$SnapUnder=8` schützt vor Beschnitt ins Bild); Error-Propagation über `Set-Reject`/`NVEnc_Reject` → `PROBE_REASON`; empirische Verifikation statt Hilfe-Glauben (`--avhw`-Links-Crop, 10-bit-`cropdetect`); Test-/Doku-Disziplin (43 Unit-Fälle, Batch-Assertions, Mod2-Rollback ohne Code-Reste, Doku- und `bin`-Sync).
+
+**Schwächen im ersten Entwurf — als Regel für künftige Auto-Crop-Änderungen:**
+1. **Schwellenwert-Lücke `TotalV = 3..4 px`:** Passthrough `<=4`, Windowbox `>4`, Pillarbox `<=2` — bei `TotalV=3..4` fiel die Datei fälschlich in den Letterbox-Zweig (`no standard letterbox height`). Fix: Pillarbox auf `<=4`, horizontale Asymmetrie/Windowbox konsistent auf `>10`; **Regel: Schwellen immer als geschlossene Partition definieren und die 3/4-px-Ränder explizit testen** (Fälle `t37`/`t38`/`t42`/`t43`).
+2. **Ungenutzter Diagnose-Kanal:** `Write-Status` schrieb Reject-Gründe in `%PS_STATUS_FILE%`, das `:RUN_PROBE` unverändert löschte — sichtbar blieb nur die Pauschalmeldung. Fix: `Set-Reject` schreibt `SET NVEnc_Reject=…` in die SET-Datei, `:RUN_PROBE` propagiert `PROBE_REASON`, `:MAIN` zeigt den konkreten Grund; auch Probe-Sonderfälle (`no cropdetect result`, unlesbare Auflösung) laufen als Reject mit Grund. **Regel: Diagnosekanäle sofort an einen Konsumenten verdrahten und im Batch testen — nicht nur im PS-Block.**
+
+### Pflege
+- Steuerlogik (`:MAIN`, EDIT_TAGS, REMUX) weiterhin in **beiden** Wrappern nachziehen; Token-Tabelle in v2 zusätzlich um die `h`-Tokens erweitert.
+- Die Dead-Code-Befunde (Abschnitt „Toter Code") gelten auch für v2 (identischer Batch-Teil; der tote `PS_STATUS_FILE`-Kanal existiert weiterhin).
 
 ## Rollback: Version ohne Part-Handling
 
