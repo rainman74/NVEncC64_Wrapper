@@ -97,15 +97,16 @@ exit /b
 
 :SETAUDIO
 set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only --audio-stream 7.1:5.1"
-if /i "%2"=="copy"                  (set "AUDIO=--audio-copy")
-if /i "%2"=="copy1"                 (set "AUDIO=--audio-copy 1")
-if /i "%2"=="copy2"                 (set "AUDIO=--audio-copy 2")
-if /i "%2"=="copy12"                (set "AUDIO=--audio-copy 1,2")
-if /i "%2"=="copy23"                (set "AUDIO=--audio-copy 2,3")
-if /i "%2"=="ac3"                   (set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only --audio-stream 7.1:5.1")
-if /i "%2"=="aac"                   (set "AUDIO=--audio-codec aac --audio-bitrate stereo:128,5.1:256 --audio-encode-other-codec-only")
-if /i "%2"=="aacs"                  (set "AUDIO=--audio-codec aac --audio-stream :stereo --audio-bitrate stereo:128")
-if /i "%2"=="eac3"                  (set "AUDIO=--audio-codec eac3 --audio-bitrate stereo:320,5.1:640 --audio-encode-other-codec-only")
+set "AUDIO_MODE=ac3"
+if /i "%2"=="copy"                  (set "AUDIO=--audio-copy" & set "AUDIO_MODE=copy")
+if /i "%2"=="copy1"                 (set "AUDIO=--audio-copy 1" & set "AUDIO_MODE=copy")
+if /i "%2"=="copy2"                 (set "AUDIO=--audio-copy 2" & set "AUDIO_MODE=copy")
+if /i "%2"=="copy12"                (set "AUDIO=--audio-copy 1,2" & set "AUDIO_MODE=copy")
+if /i "%2"=="copy23"                (set "AUDIO=--audio-copy 2,3" & set "AUDIO_MODE=copy")
+if /i "%2"=="ac3"                   (set "AUDIO=--audio-codec ac3 --audio-bitrate stereo:192,5.1:384 --audio-encode-other-codec-only --audio-stream 7.1:5.1" & set "AUDIO_MODE=ac3")
+if /i "%2"=="aac"                   (set "AUDIO=--audio-codec aac --audio-bitrate stereo:128,5.1:256 --audio-encode-other-codec-only" & set "AUDIO_MODE=aac")
+if /i "%2"=="aacs"                  (set "AUDIO=--audio-codec aac --audio-stream :stereo --audio-bitrate stereo:128" & set "AUDIO_MODE=aacs")
+if /i "%2"=="eac3"                  (set "AUDIO=--audio-codec eac3 --audio-bitrate stereo:320,5.1:640 --audio-encode-other-codec-only" & set "AUDIO_MODE=eac3")
 exit /b
 
 :SETCROP
@@ -154,6 +155,17 @@ if /i "%4"=="1780"                  (set "CROP=--crop 70,0,70,0 --output-res 178
 if /i "%4"=="1788"                  (set "CROP=--crop 66,0,66,0 --output-res 1788x1080")
 if /i "%4"=="1792"                  (set "CROP=--crop 64,0,64,0 --output-res 1792x1080")
 if /i "%4"=="1800"                  (set "CROP=--crop 60,0,60,0 --output-res 1800x1080")
+if /i "%4"=="h464"                  (set "CROP=--crop 0,128,0,128")
+if /i "%4"=="h536"                  (set "CROP=--crop 0,92,0,92")
+if /i "%4"=="h540"                  (set "CROP=--crop 0,90,0,90")
+if /i "%4"=="h544"                  (set "CROP=--crop 0,88,0,88")
+if /i "%4"=="h580"                  (set "CROP=--crop 0,70,0,70")
+if /i "%4"=="h640"                  (set "CROP=--crop 0,40,0,40")
+if /i "%4"=="h692"                  (set "CROP=--crop 0,14,0,14")
+if /i "%4"=="h960"                  (set "CROP=--crop 160,0,160,0 --output-res 960x720")
+if /i "%4"=="h988"                  (set "CROP=--crop 146,0,146,0 --output-res 988x720")
+if /i "%4"=="h1080"                 (set "CROP=--crop 100,0,100,0 --output-res 1080x720")
+if /i "%4"=="h1196"                 (set "CROP=--crop 42,0,42,0 --output-res 1196x720")
 if /i "%4"=="c1"                    (set "CROP=")
 if /i "%4"=="c2"                    (set "CROP=")
 if /i "%4"=="c3"                    (set "CROP=")
@@ -244,6 +256,59 @@ if /i "%8"=="true"                  (set "CHECK_ENCODED=1")
 if /i "%8"=="false"                 (set "CHECK_ENCODED=0")
 exit /b
 
+:CHECK_AUDIO_STREAMS
+setlocal EnableDelayedExpansion
+set "AUDIO_STREAM_COUNT=0"
+set "AUDIO_NEEDS_REENCODE=0"
+set "FF_AUDIO_ARGS="
+set "FF_AUDIO_INFO="
+set "AIDX=0"
+set "ACODEC_OUT=!AUDIO_MODE!"
+if /i "!AUDIO_MODE!"=="aacs" set "ACODEC_OUT=aac"
+for /f "usebackq tokens=1,2,3 delims=," %%A in (`ffprobe -v error -select_streams a -show_entries stream^=index^,codec_name^,channels -of csv^=p^=0 "!INFILE!"`) do (
+    set "ACODEC=%%B"
+    set "ACH=%%C"
+    if not defined ACH set "ACH=2"
+    set "AREENCODE=0"
+    set "ABITRATE="
+    set "AAC_CH="
+    set "AINFO="
+    if /i "!AUDIO_MODE!"=="ac3" (
+        if /i not "!ACODEC!"=="ac3" set "AREENCODE=1"
+        if !ACH! LEQ 2 (set "ABITRATE=192k") else (set "ABITRATE=384k" & set "AAC_CH=6")
+    )
+    if /i "!AUDIO_MODE!"=="aac" (
+        if /i not "!ACODEC!"=="aac" set "AREENCODE=1"
+        if !ACH! LEQ 2 (set "ABITRATE=128k") else (set "ABITRATE=256k")
+    )
+    if /i "!AUDIO_MODE!"=="aacs" (
+        set "AREENCODE=1"
+        set "ABITRATE=128k"
+        set "AAC_CH=2"
+        if /i "!ACODEC!"=="aac" if !ACH! LEQ 2 (set "AREENCODE=0" & set "AAC_CH=")
+    )
+    if /i "!AUDIO_MODE!"=="eac3" (
+        if /i not "!ACODEC!"=="eac3" set "AREENCODE=1"
+        if !ACH! LEQ 2 (set "ABITRATE=320k") else (set "ABITRATE=640k")
+    )
+    if "!AREENCODE!"=="1" (
+        set "AUDIO_NEEDS_REENCODE=1"
+        set "FF_AUDIO_ARGS=!FF_AUDIO_ARGS! -c:a:!AIDX! !ACODEC_OUT!"
+        if defined AAC_CH set "FF_AUDIO_ARGS=!FF_AUDIO_ARGS! -ac:a:!AIDX! !AAC_CH!"
+        set "FF_AUDIO_ARGS=!FF_AUDIO_ARGS! -b:a:!AIDX! !ABITRATE!"
+        if defined AAC_CH (set "AINFO=Track !AIDX!: !ACODEC! (!ACH!ch) -> !ACODEC_OUT! (!AAC_CH!ch,!ABITRATE!)") else (set "AINFO=Track !AIDX!: !ACODEC! (!ACH!ch) -> !ACODEC_OUT! (!ABITRATE!)")
+    ) else (
+        set "FF_AUDIO_ARGS=!FF_AUDIO_ARGS! -c:a:!AIDX! copy"
+        set "AINFO=Track !AIDX!: !ACODEC! (!ACH!ch) -> copy"
+    )
+    set "FF_AUDIO_INFO=!FF_AUDIO_INFO!!AINFO!; "
+    set /a AIDX+=1
+)
+set "AUDIO_STREAM_COUNT=!AIDX!"
+if defined FF_AUDIO_INFO set "FF_AUDIO_INFO=!FF_AUDIO_INFO:~0,-2!"
+endlocal & set "AUDIO_STREAM_COUNT=%AUDIO_STREAM_COUNT%" & set "AUDIO_NEEDS_REENCODE=%AUDIO_NEEDS_REENCODE%" & set "FF_AUDIO_ARGS=%FF_AUDIO_ARGS%" & set "FF_AUDIO_INFO=%FF_AUDIO_INFO%"
+exit /b
+
 :MAIN
 call :ENSURE_DIR "_Converted"
 if exist "_Converted\*.part.mkv" del /Q "_Converted\*.part.mkv" >nul 2>&1
@@ -259,12 +324,19 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
     set "INNAME=%%~nxI"
     set "INDIR=%%~dpI"
     set "SKIP_FILE="
+    set "PROBE_REASON="
     set "RESIZE_PARAM="
     set "CROP_L=0"
     set "CROP_R=0"
     set "TARGET_DIR="
     set "RESIZE_REQUIRED=0"
     set "SRC_CODEC="
+    set "VIDEO_MATCH="
+    set "AUDIO_ONLY_FFMPEG=0"
+    set "AUDIO_STREAM_COUNT=0"
+    set "AUDIO_NEEDS_REENCODE=0"
+    set "FF_AUDIO_ARGS="
+    set "FF_AUDIO_INFO="
 
     setlocal EnableDelayedExpansion
 
@@ -286,9 +358,20 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
             set "SKIP_FILE=1"
         ) else (
             if "%CHECK_ENCODED%"=="1" (
-                if /i "!SRC_CODEC!"=="HEVC" if /i "%ENCODER%"=="hevc" set "TARGET_DIR=_Converted"
-                if /i "!SRC_CODEC!"=="AVC"  if /i "%ENCODER%"=="h264" set "TARGET_DIR=_Converted"
-                if /i "!SRC_CODEC!"=="AV1"  if /i "%ENCODER%"=="av1"  set "TARGET_DIR=_Converted"
+                set "VIDEO_MATCH="
+                if /i "!SRC_CODEC!"=="HEVC" if /i "%ENCODER%"=="hevc" set "VIDEO_MATCH=1"
+                if /i "!SRC_CODEC!"=="AVC"  if /i "%ENCODER%"=="h264" set "VIDEO_MATCH=1"
+                if /i "!SRC_CODEC!"=="AV1"  if /i "%ENCODER%"=="av1"  set "VIDEO_MATCH=1"
+                if defined VIDEO_MATCH (
+                    if /i "!AUDIO_MODE!"=="copy" (
+                        set "TARGET_DIR=_Converted"
+                    ) else (
+                        call :CHECK_AUDIO_STREAMS
+                        if "!AUDIO_STREAM_COUNT!"=="0" set "TARGET_DIR=_Converted"
+                        if not "!AUDIO_STREAM_COUNT!"=="0" if "!AUDIO_NEEDS_REENCODE!"=="0" set "TARGET_DIR=_Converted"
+                        if not "!AUDIO_STREAM_COUNT!"=="0" if "!AUDIO_NEEDS_REENCODE!"=="1" set "AUDIO_ONLY_FFMPEG=1"
+                    )
+                )
             )
         )
     )
@@ -326,6 +409,35 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
         call :REMUX_IF_NEEDED "!MOVED_FILE!" "!MOVED_FILE!"
     )
 
+    if "!AUDIO_ONLY_FFMPEG!"=="1" (
+        echo %ESC%[91mWARNING: Video already encoded as !SRC_CODEC!, but audio tracks require re-encoding via FFmpeg...%ESC%[0m
+        echo(!FF_AUDIO_INFO!
+        powershell -command "write-output ('file:///' + (get-item '!INDIR!').FullName.Replace('\', '/') -replace [char]34, [char]7 -replace ' ', '%%20' -replace '#', '%%23' -replace [char]39, '%%27' -replace [char]33, '%%21' -replace '\(', '%%28' -replace '\)', '%%29')"
+        if "!IS_AVS!"=="0" mediainfo --Inform="General;%%Duration/String2%% - %%FileSize/String4%%" "!INFILE!"
+        ffmpeg.exe -y -hide_banner -loglevel error -stats -i "!INFILE!" -map 0:v -map 0:a? -map 0:s? -map 0:t? -map_chapters 0 -c:v copy -c:s copy -c:t copy !FF_AUDIO_ARGS! "_Converted\!INBASE!.part.mkv"
+        set "RC=!ERRORLEVEL!"
+        if not "!RC!"=="0" (
+            if exist "_Converted\!INBASE!.part.mkv" del /Q "_Converted\!INBASE!.part.mkv" >nul 2>&1
+            echo %ESC%[91mWARNING: FFmpeg audio re-encoding failed or cancelled. Source not moved.%ESC%[0m
+            exit /b
+        )
+        if not exist "_Converted\!INBASE!.part.mkv" (
+            echo %ESC%[91mWARNING: No output file.%ESC%[0m
+            exit /b
+        )
+        move /Y "_Converted\!INBASE!.part.mkv" "_Converted\!INBASE!.mkv" >nul
+        if exist "_Converted\!INBASE!.mkv" (
+            if "%EDIT_TAGS%"=="1" call :EDIT_TAGS "_Converted\!INBASE!.mkv"
+            call :REMUX_IF_NEEDED "!INFILE!" "_Converted\!INBASE!.mkv"
+        )
+        for /L %%X in (5,-1,1) do (
+            echo Waiting for %%X seconds...
+            timeout /t 1 >nul
+        )
+        echo.
+        set "SKIP_FILE=1"
+    )
+
     if not defined SKIP_FILE (
         %DBG% ==========================================
         %DBG% File: !INFILE!
@@ -351,10 +463,18 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
             if "!PROBE_OK!"=="0" (
                 if "!IS_AVS!"=="1" (
                     %DBG% RUN_PROBE failed for AviSynth script, continuing without crop
-                    echo %ESC%[91mWARNING: Probe failed for AviSynth script - continuing without auto-crop.%ESC%[0m
+                    if defined PROBE_REASON (
+                        echo %ESC%[91mWARNING: Probe failed for AviSynth script ^(!PROBE_REASON!^) - continuing without auto-crop.%ESC%[0m
+                    ) else (
+                        echo %ESC%[91mWARNING: Probe failed for AviSynth script - continuing without auto-crop.%ESC%[0m
+                    )
                 ) else (
                     %DBG% RUN_PROBE failed, moving file to _Check
-                    echo %ESC%[91mWARNING: Probe failed or source too small. Moving file to _Check.%ESC%[0m
+                    if defined PROBE_REASON (
+                        echo %ESC%[91mWARNING: Auto-crop rejected ^(!PROBE_REASON!^). Moving file to _Check.%ESC%[0m
+                    ) else (
+                        echo %ESC%[91mWARNING: Probe failed or source too small. Moving file to _Check.%ESC%[0m
+                    )
                     call :ENSURE_DIR "_Check"
                     move /Y "!INFILE!" "_Check\" >nul
                     set "SKIP_FILE=1"
@@ -375,6 +495,10 @@ for %%I in (*.avs *.mkv *.mp4 *.mpg *.mov *.avi *.webm) do if exist "%%I" if not
                 )
                 %DBG% AUTO-CROP final result: !CROP!
             )
+        )
+
+        if not defined SKIP_FILE if /i "!CROP_MODE!"=="AUTO" if "!FILTER_HAS_RESIZE!"=="1" (
+            echo %ESC%[93mWARNING: VSR filter combined with auto-crop keeps 1:1 resolution - NVEncC will fall back to bicubic unless an upscale target is used.%ESC%[0m
         )
 
         if not "!CROP_MODE!"=="AUTO" if defined CROP (
@@ -663,6 +787,7 @@ set "AUTO_CROP="
 set "AUTO_RES="
 set "NVEnc_Crop="
 set "NVEnc_Res="
+set "NVEnc_Reject="
 set "PS_SCRIPT=%TEMP%\probe_temp_%RANDOM%.ps1"
 set "PS_SET_FILE=%TEMP%\probe_set_vars_%RANDOM%.cmd"
 set "PS_STATUS_FILE=%TEMP%\probe_status_output_%RANDOM%.tmp"
@@ -698,7 +823,7 @@ if exist "%PS_STATUS_FILE%" del /F "%PS_STATUS_FILE%"
 if "%RC%"=="0" goto :PROBE_OK
 if "%RC%"=="8" if defined NVEnc_Crop goto :PROBE_OK
 
-endlocal & exit /b 1
+endlocal & set "PROBE_REASON=%NVEnc_Reject%" & exit /b 1
 
 :PROBE_OK
 set "TEMP_CROP=%NVEnc_Crop%"
@@ -811,7 +936,7 @@ exit /b
 set "TOK_ENCODER=def hevc he10 h264 av1"
 set "TOK_AUDIO=copy copy1 copy2 copy12 copy23 ac3 aac aacs eac3"
 set "TOK_QUALITY=def auto hq uhq lq ulq"
-set "TOK_CROP=none auto 43 169 696 752 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1440f 1348 1408 1420 1480 1500 1620 1764 1772 1780 1788 1792 1800 c1 c2 c3 c4 c5 c6"
+set "TOK_CROP=none auto 43 169 696 752 768 800 804 808 812 816 872 960 1012 1024 1036 1040 720 720p 720f 1080 1080p 1080f 2160 2160p 2160f 1440 1440f 1348 1408 1420 1480 1500 1620 1764 1772 1780 1788 1792 1800 h464 h536 h540 h544 h580 h640 h692 h960 h988 h1080 h1196 c1 c2 c3 c4 c5 c6"
 set "TOK_FILTER=none edgelevel smooth nlmeans gauss bm3d sharp denoise denoiseHQ artifact artifactHQ vsr vsrArtifact vsrArtifactHQ vsrDenoise vsrDenoiseHQ vsrDeBlur vsrDeBlurHQ vsrDetailRestore vsrDetailRestoreHQ vsrStream vsrStreamHQ deHalo deHalo2 vhsRestore log f1 f2 f3 f4 f5 f6"
 set "TOK_MODE=none deint ivtc rtgmc rtgmcp double framegen framegen4 framegen8 framegenHQ 23fps 25fps 30fps 60fps 29fps 59fps lighter darker vintage linear tweak hdrToSDR hdrToSDRR hdrToSDRM hdrToSDRH dv dolby-vision"
 set "TOK_DECODER=def hw sw auto"
@@ -862,7 +987,16 @@ function Get-Median {
         return [int](($Sorted[($Count / 2) - 1] + $Sorted[$Count / 2]) / 2)
     }
 }
-$StandardResolutions = @{
+function Set-Reject ($Reason) {
+    Write-Status "REJECTED: $Reason"
+    "SET NVEnc_Reject=$Reason" | Out-File -Encoding ASCII $SetFile
+    exit 8
+}
+$ffmpegCmd = (get-command ffmpeg.exe).source
+$ffprobeCmd = (get-command ffprobe.exe).source
+# --- strict whitelist tables: snapping only, never free crop --------------
+# Full-HD container (source width >= 1600 or height >= 1000)
+$StandardResolutions1080 = @{
     384 = @{ Crop="0:192:0:192"; Res="1920x696" }
     328 = @{ Crop="0:164:0:164"; Res="1920x752" }
     312 = @{ Crop="0:156:0:156"; Res="1920x768" }
@@ -879,84 +1013,167 @@ $StandardResolutions = @{
      40 = @{ Crop="0:20:0:20";   Res="1920x1040" }
       0 = @{ Crop="0:0:0:0";     Res="1920x1080" }
 }
-$StandardWidths = @(1800,1792,1788,1780,1772,1764,1500,1620,1480,1440,1420,1408,1348)
-$ffmpegCmd = (get-command ffmpeg.exe).source
-$ffprobeCmd = (get-command ffprobe.exe).source
-$ProbeTimes = @("00:02:00","00:10:00","00:20:00")
+$StandardWidths1080 = @(1800,1792,1788,1780,1772,1764,1500,1620,1480,1440,1420,1408,1348)
+# HD container (1280x720 basis); mod8/mod4-preferred values only
+$StandardResolutions720 = @{
+      0 = @{ Crop="0:0:0:0";     Res="1280x720" }
+     28 = @{ Crop="0:14:0:14";   Res="1280x692" }
+     80 = @{ Crop="0:40:0:40";   Res="1280x640" }
+    140 = @{ Crop="0:70:0:70";   Res="1280x580" }
+    176 = @{ Crop="0:88:0:88";   Res="1280x544" }
+    184 = @{ Crop="0:92:0:92";   Res="1280x536" }
+    256 = @{ Crop="0:128:0:128"; Res="1280x464" }
+}
+$StandardWidths720 = @(1196,1080,988,960)
+# snap window: never cut more than 4px into the picture, tolerate up to 8px bars left
+$SnapOver  = 4
+$SnapUnder = 8
+$ProbeTimes = @()
 $CropResults = @()
+# --- 1) resolution, SAR and minimum size ---------------------------------
 if (-not (Test-Path $VideoFile)) { $ExitCode = 1 }
 if ($ExitCode -eq 0) {
-    $ResolutionInfo = & $ffprobeCmd -v error -select_streams v:0 -show_entries stream=width,height -of default=noprint_wrappers=1:nokey=1 $VideoFile 2>&1
-    $CleanRes = $ResolutionInfo | Where-Object { $_ -match '^\d+$' }
-    if ($CleanRes.Count -lt 2) { $ExitCode = 2 }
-    $OrigWidth  = [int]$CleanRes[0]
-    $OrigHeight = [int]$CleanRes[1]
-    if ($OrigWidth -lt 1280 -or $OrigHeight -lt 696) {
-        $RejectReason = "source too small (${OrigWidth}x${OrigHeight})"
-    }
-    if ($RejectReason) {
-        Write-Status "REJECTED: $RejectReason"
-        exit 8
+    $VideoInfo = @(& $ffprobeCmd -v error -select_streams v:0 -show_entries stream=width,height,sample_aspect_ratio -of default=noprint_wrappers=1:nokey=1 $VideoFile 2>&1)
+    $Dims = @($VideoInfo | Where-Object { $_ -match '^\d+$' })
+    if ($Dims.Count -lt 2) {
+        Set-Reject "could not read source resolution"
+    } else {
+        $OrigWidth  = [int]$Dims[0]
+        $OrigHeight = [int]$Dims[1]
+        if ((($OrigWidth % 2) -ne 0) -or (($OrigHeight % 2) -ne 0)) {
+            $RejectReason = "odd source dimension (${OrigWidth}x${OrigHeight})"
+        } elseif ($OrigWidth -lt 960 -or $OrigHeight -lt 464) {
+            $RejectReason = "source too small (${OrigWidth}x${OrigHeight})"
+        } else {
+            $Sar = $VideoInfo | Where-Object { $_ -match '^\d+:\d+$' } | Select-Object -First 1
+            if ($Sar -and ($Sar -notmatch '^(1:1|0:1)$')) {
+                $RejectReason = "anamorphic source (SAR $Sar) - manual crop required"
+            }
+        }
     }
 }
+if ($ExitCode -eq 0 -and $RejectReason) {
+    Set-Reject $RejectReason
+}
+# --- 2) relative probe positions (works for short clips and trailers) ----
+if ($ExitCode -eq 0) {
+    $Duration = 0.0
+    $DurInfo = @(& $ffprobeCmd -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $VideoFile 2>&1)
+    foreach ($d in $DurInfo) {
+        if ($d -match '^\d+(\.\d+)?$') {
+            $Duration = [double]::Parse($d, [System.Globalization.CultureInfo]::InvariantCulture)
+            break
+        }
+    }
+    if ($Duration -gt 1.5) {
+        foreach ($f in @(0.15,0.45,0.75)) {
+            $t = [math]::Round($Duration * $f, 3)
+            if ($t -gt ($Duration - 0.5)) { $t = [math]::Round($Duration - 0.5, 3) }
+            if ($t -lt 0.2) { $t = 0.2 }
+            $ProbeTimes += $t.ToString("0.000", [System.Globalization.CultureInfo]::InvariantCulture)
+        }
+    } else {
+        $ProbeTimes = @("0.2","0.6","1.0")
+    }
+}
+# --- 3) cropdetect at the three positions --------------------------------
 if ($ExitCode -eq 0) {
     foreach ($Time in $ProbeTimes) {
         $out = & $ffmpegCmd -ss $Time -i $VideoFile -t 5 -vf "cropdetect=limit=24:round=2:reset=0" -f null - 2>&1
         $m = [regex]::Matches($out,"crop=(\d+:\d+:\d+:\d+)") | Select-Object -Last 1
         if ($m) {
             $c = ($m.Value -replace 'crop=','') -split ':'
-            $CropResults += [PSCustomObject]@{ W=[int]$c[0]; H=[int]$c[1]; X=[int]$c[2]; Y=[int]$c[3] }
+            $W = [int]$c[0]; $H = [int]$c[1]; $X = [int]$c[2]; $Y = [int]$c[3]
+            if ($W -lt ($OrigWidth * 0.5) -or $H -lt ($OrigHeight * 0.5)) {
+                Write-Status "IGNORED: implausible crop window ${W}x${H} at ${Time}s"
+            } else {
+                $CropResults += [PSCustomObject]@{ W=$W; H=$H; X=$X; Y=$Y }
+            }
         }
     }
-    if ($CropResults.Count -eq 0) { $ExitCode = 4 }
+    if ($CropResults.Count -eq 0) {
+        Set-Reject "no cropdetect result at probe positions"
+    }
 }
+# --- 4) evaluate: snap to whitelist or reject ----------------------------
 if ($ExitCode -eq 0) {
     $W = Get-Median $CropResults.W
     $H = Get-Median $CropResults.H
     $X = Get-Median $CropResults.X
     $Y = Get-Median $CropResults.Y
-    $CropL = $X; $CropR=$OrigWidth-$X-$W
-    $CropT = $Y; $CropB=$OrigHeight-$Y-$H
+    $CropL = [math]::Max(0, $X)
+    $CropR = [math]::Max(0, $OrigWidth - $X - $W)
+    $CropT = [math]::Max(0, $Y)
+    $CropB = [math]::Max(0, $OrigHeight - $Y - $H)
     $TotalV = $CropT + $CropB
     $TotalH = $CropL + $CropR
     if ($TotalV -le 4 -and $TotalH -le 10) {
+        # nothing (further) to crop - also covers natively cropped sources
         "SET NVEnc_Crop=0:0:0:0" | Out-File -Encoding ASCII $SetFile
         "SET NVEnc_Res=${OrigWidth}x${OrigHeight}" | Out-File -Encoding ASCII $SetFile -Append
         exit 0
     }
-    if ($TotalV -le 2 -and $TotalH -gt 8) {
-        $BestW = $StandardWidths |
-            Sort-Object { [math]::Abs($_ - ($OrigWidth - $TotalH)) } |
-            Select-Object -First 1
-        $Side = [int](($OrigWidth - $BestW) / 2)
-        "SET NVEnc_Crop=${Side}:0:${Side}:0" | Out-File -Encoding ASCII $SetFile
-        "SET NVEnc_Res=${BestW}x${OrigHeight}" | Out-File -Encoding ASCII $SetFile -Append
-        exit 0
+    if ($TotalV -gt 4 -and $TotalH -gt 10) {
+        $RejectReason = "windowbox (V=$TotalV H=$TotalH) not supported"
     }
-    if ([math]::Abs($CropT - $CropB) -gt 10) {
-        $RejectReason = "vertical asymmetry (T=$CropT B=$CropB)"
+    if ($TotalV -gt 4 -and (-not $RejectReason)) {
+        if ([math]::Abs($CropT - $CropB) -gt 10) {
+            $RejectReason = "vertical asymmetry (T=$CropT B=$CropB)"
+        } elseif ((($CropT -eq 0) -and ($CropB -gt 0)) -or (($CropB -eq 0) -and ($CropT -gt 0))) {
+            $RejectReason = "one-sided vertical crop (T=$CropT B=$CropB)"
+        }
     }
-    elseif ( ($CropT -eq 0 -and $CropB -gt 0) -or ($CropB -eq 0 -and $CropT -gt 0) ) {
-        $RejectReason = "one-sided vertical crop (T=$CropT B=$CropB)"
-    }
-    elseif ($TotalV -eq 0 -and [math]::Abs($CropL - $CropR) -gt 2) {
-        $RejectReason = "horizontal asymmetry (no matching standard width)"
+    if ($TotalH -gt 10 -and $TotalV -le 4 -and (-not $RejectReason)) {
+        if ([math]::Abs($CropL - $CropR) -gt 2) {
+            $RejectReason = "horizontal asymmetry (L=$CropL R=$CropR)"
+        }
     }
     if ($RejectReason) {
-        Write-Status "REJECTED: $RejectReason"
-        exit 8
+        Set-Reject $RejectReason
     }
-    $Best = $StandardResolutions.GetEnumerator() | Sort-Object { [math]::Abs($_.Key-$TotalV) } | Select-Object -First 1
-    $Top=$Best.Value.Crop.Split(':')[1]
-    $Bottom=$Best.Value.Crop.Split(':')[3]
-    $TargetH=$Best.Value.Res.Split('x')[1]
-    $FinalL=0; $TargetW=$OrigWidth
-    $NVEncCrop="${FinalL}:${Top}:${FinalL}:${Bottom}"
-    $NVEncRes="${TargetW}x$TargetH"
-    "SET NVEnc_Crop=$NVEncCrop" | Out-File -Encoding ASCII $SetFile
-    "SET NVEnc_Res=$NVEncRes"   | Out-File -Encoding ASCII $SetFile -Append
+    $Use1080 = ($OrigWidth -ge 1600) -or ($OrigHeight -ge 1000)
+    if ($TotalV -le 4) {
+        # pillarbox: crop left/right, keep height
+        $Table = if ($Use1080) { $StandardWidths1080 } else { $StandardWidths720 }
+        $MeasuredW = $OrigWidth - $TotalH
+        $BestW = @($Table | Sort-Object { [math]::Abs($_ - $MeasuredW) })[0]
+        $Over  = $MeasuredW - $BestW
+        $Under = $BestW - $MeasuredW
+        if (($Over -gt $SnapOver) -or ($Under -gt $SnapUnder) -or ($BestW -ge ($OrigWidth - 4))) {
+            $RejectReason = "no standard pillarbox width (measured ${MeasuredW}px, tolerance -${SnapOver}/+${SnapUnder})"
+        } else {
+            $Side = [int](($OrigWidth - $BestW) / 2)
+            "SET NVEnc_Crop=${Side}:0:${Side}:0" | Out-File -Encoding ASCII $SetFile
+            "SET NVEnc_Res=${BestW}x${OrigHeight}" | Out-File -Encoding ASCII $SetFile -Append
+            exit 0
+        }
+    } else {
+        # letterbox: crop top/bottom, keep width
+        $Table = if ($Use1080) { $StandardResolutions1080 } else { $StandardResolutions720 }
+        $Best = $Table.GetEnumerator() |
+            Where-Object { $_.Key -gt 0 } |
+            Sort-Object { [math]::Abs($_.Key - $TotalV) } |
+            Select-Object -First 1
+        if ($null -eq $Best) {
+            $RejectReason = "no standard letterbox height (TotalV=${TotalV}px)"
+        } else {
+            $Over  = $Best.Key - $TotalV
+            $Under = $TotalV - $Best.Key
+            if (($Over -gt $SnapOver) -or ($Under -gt $SnapUnder)) {
+                $RejectReason = "no standard letterbox height (TotalV=${TotalV}px, tolerance -${SnapOver}/+${SnapUnder})"
+            } else {
+                $TargetH = [int]$Best.Value.Res.Split('x')[1]
+                $Top = [int](($OrigHeight - $TargetH) / 2)
+                "SET NVEnc_Crop=0:${Top}:0:${Top}" | Out-File -Encoding ASCII $SetFile
+                "SET NVEnc_Res=${OrigWidth}x${TargetH}" | Out-File -Encoding ASCII $SetFile -Append
+                exit 0
+            }
+        }
+    }
+    Set-Reject $RejectReason
 }
 exit $ExitCode
+
 #PS_RUN_PROBE_END#
 
 #PS_EDIT_TAGS_BEGIN#
