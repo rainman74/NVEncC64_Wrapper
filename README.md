@@ -6,7 +6,7 @@ Batch-Videotranscoding-Wrapper für [NVEncC64](https://github.com/rigaya/NVEnc) 
 
 - **Auto-Crop** — Ermittelt schwarze Balken per `ffmpeg cropdetect` an 3 relativen Zeitpunkten (15/45/75 % der Laufzeit) und rastet auf Standard-Auflösungen ein (Full-HD- und HD-Tabellen; **kein freier Beschnitt** — außerhalb der Toleranz → `_Check`)
 - **Auto-Quality** — Wählt Qualitätsstufe anhand des Jahrzehnts im Dateinamen (`(19xx)` = hq, `(20xx)` = def)
-- **Auto-Skip** — Bereits im Zielcodec vorliegende Dateien werden ohne Neukodierung verschoben; abweichende Audiospuren werden vorher per FFmpeg neu encodet (Video bleibt `copy`)
+- **Auto-Skip** — Bereits im Zielcodec vorliegende Dateien werden ohne Neukodierung verschoben; abweichende Audiospuren werden vorher per FFmpeg neu encodiert (Video bleibt `copy`)
 - **Audio-Encoding** — AC3, AAC, E-AC3 oder direkte Kopie (auch selektive Streams)
 - **VPP-Filter** — Denoise, Sharpening, Super-Resolution, VSR, Deinterlacing, HDR→SDR u.v.m.
 - **VHS-Restore** — Feldreparatur + Deinterlacing für VHS-Captures (`vhsRestore`, ONNX-Modell PAL/SECAM)
@@ -228,10 +228,10 @@ Die HD-Tabellen (`1280x720`-Basis) sind in `nvencc64_wrapper.cmd` aktiv; Full-HD
 Liegt der Videostream bereits im Zielcodec vor (`CHECK_ENCODED=1`), prüft `nvencc64_wrapper.cmd` zusätzlich die Audiospuren:
 
 - **`copy`/`copy1`/`copy2`/`copy12`/`copy23`** (kein Ziel-Audio-Codec): unverändertes Verschieben nach `_Converted`, Track-Filter werden ignoriert.
-- **`ac3`/`aac`/`aacs`/`eac3`** (oder leer): Sind alle Audiospuren bereits konform (bzw. enthält die Datei gar kein Audio), wird wie bisher verschoben. Weicht mindestens eine Spur ab, wird die Quelldatei **nicht** verschoben und **nicht** gelöscht; stattdessen erzeugt `ffmpeg` die Ausgabe mit `-c:v copy`:
+- **`ac3`/`aac`/`aacs`/`eac3`** (oder leer): Sind alle Audiospuren bereits konform (bzw. enthält die Datei gar kein Audio), wird wie bisher verschoben. Weicht mindestens eine Spur ab, bleibt die Quelldatei **unangetastet**; `ffmpeg` erzeugt die Ausgabe mit `-c:v copy`:
   - konforme Spuren: `-c:a:<idx> copy`
   - abweichende Spuren: AC3 (2ch 192k, mehrkanalig 384k / 5.1-Downmix), AAC (128k/256k), AAC-Stereo (`aacs`: immer 2ch 128k), E-AC3 (320k/640k)
-- Untertitel, Kapitel und Anhänge (Fonts) werden übernommen; nach Erfolg laufen `EDIT_TAGS`, `REMUX_IF_NEEDED` und der 5-Sekunden-Countdown wie beim regulären Encode. Im Fehlerfall bleibt die Quelle unverändert, die `.part.mkv` wird gelöscht.
+- Untertitel, Kapitel und Anhänge (Fonts) werden übernommen; nach Erfolg laufen `EDIT_TAGS`, `REMUX_IF_NEEDED` und der 5-Sekunden-Countdown wie beim regulären Encode. Im Fehlerfall bleibt die Quelldatei unverändert, die Teil-Ausgabe (`.part.mkv`) wird gelöscht.
 
 ## Metadaten-Bereinigung (Tag-Edit)
 
@@ -266,6 +266,7 @@ Aktiviert detaillierte Ausgabe der Crop-Erkennung, NVEnc-Parameter und Zwischene
 - **Asymmetrische schwarze Balken** → Datei wird nach `_Check/` verschoben
 - **Quelle zu klein** (< 960×464; frühere Basis-Fassung: < 1280×696) → Datei wird nach `_Check/` verschoben
 - **Tag-Edit fehlgeschlagen** → Datei wird nach `_Check/` verschoben
+- **Audio-Reencode fehlgeschlagen** → Teil-Ausgabe (`.part.mkv`) wird gelöscht, die Quelle bleibt unverändert
 
 ## Hilfsskripte im `bin`
 
